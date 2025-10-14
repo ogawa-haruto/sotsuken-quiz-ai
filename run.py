@@ -17,14 +17,17 @@ def create_app() -> FastAPI:
         allow_methods=["*"], allow_headers=["*"],
     )
 
+    # API ルーター
     app.include_router(quiz_router)
 
+    # static を配信（/static/...）
     os.makedirs(settings.IMAGE_DIR, exist_ok=True)
     app.mount("/static", StaticFiles(directory="static"), name="static")
 
+    # ここを追加：ルートで index.html を返す
     @app.get("/", include_in_schema=False)
     def root_page():
-        return FileResponse("index.html")
+        return FileResponse("index.html")  # リポジトリ直下の index.html を返す
 
     return app
 
