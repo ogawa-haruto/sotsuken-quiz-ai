@@ -138,7 +138,7 @@
 </dialog>
 
 <script>
-const API_BASE = "http://127.0.0.1:8000";
+const API_BASE = window.location.origin;
 const api = {
   j: async (res)=>{ if(!res.ok){ const t=await res.text(); throw new Error(t || res.statusText); } return res.json(); },
   createQuiz: (question, answer)=> fetch(`${API_BASE}/quiz/create`, {
