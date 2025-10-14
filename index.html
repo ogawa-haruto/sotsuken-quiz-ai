@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>自己生成クイズ × 画像付き単語帳（実験版）</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.css">
+  <style>
+    :root{ --bg:#f7f9fc; --card:#fff; --line:#e9eef5; --text:#222; --muted:#6c757d; --brand1:#4facfe; --brand2:#00f2fe; --accent:#667eea; --warn:#f39c12; --bad:#e74c3c; --radius:14px; }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans JP","Hiragino Kaku Gothic ProN",Meiryo,sans-serif;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:var(--text)}
+    .app{max-width:1100px;margin:0 auto;min-height:100vh;background:var(--card);display:flex;flex-direction:column;box-shadow:0 10px 30px rgba(0,0,0,.12)}
+    .header{padding:24px 20px;color:#fff;background:linear-gradient(135deg,#4facfe 0%,#00f2fe 100%);text-align:center}
+    .nav{display:flex;gap:8px;padding:10px 16px;border-bottom:1px solid var(--line);overflow-x:auto;background:#fff}
+    .nav button{min-width:140px;padding:10px;border:0;background:#fff;color:var(--muted);border-radius:999px;cursor:pointer;border:1px solid var(--line)}
+    .nav button.active{color:var(--accent);border-color:var(--accent);box-shadow:0 0 0 3px rgba(102,126,234,.12)}
+    .main{flex:1;padding:16px;background:var(--bg)}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px;box-shadow:0 6px 16px rgba(0,0,0,.05);margin-bottom:16px}
+    .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px}
+    .btn{display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,#4facfe 0%,#00f2fe 100%);color:#fff;border:0;border-radius:10px;padding:10px 14px;cursor:pointer}
+    .btn.secondary{background:linear-gradient(135deg,#9aa9ff 0%,#b69cfe 100%)}
+    .btn.ghost{background:#fff;color:#667eea;border:1px solid #667eea}
+    .btn.warn{background:linear-gradient(135deg,#ff9966 0%,#ff5e62 100%)}
+    .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    .list{max-height:460px;overflow:auto}
+    .item{border:1px solid var(--line);border-radius:12px;padding:12px;margin:10px 0;background:#fff}
+    .pill{display:inline-block;background:#f1f3f5;border:1px solid var(--line);border-radius:999px;padding:4px 10px;margin-right:8px;color:#556}
+    .muted{color:var(--muted)}
+    .right{margin-left:auto}
+    .thumb{width:160px;max-height:120px;object-fit:cover;border-radius:8px;border:1px solid var(--line)}
+    .progress{height:8px;background:#e9eef5;border-radius:999px;overflow:hidden;margin:8px 0 12px}
+    .bar{height:100%;background:linear-gradient(135deg,#4facfe 0%,#00f2fe 100%);width:0}
+    dialog::backdrop{background:rgba(0,0,0,.4)}
+    dialog{border:none;border-radius:16px;max-width:90vw}
+    .switch{position:relative;display:inline-block;width:48px;height:26px}
+    .switch input{opacity:0;width:0;height:0}
+    .slider{position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:#dfe6ef;transition:.2s;border-radius:999px}
+    .slider:before{position:absolute;content:"";height:20px;width:20px;left:3px;bottom:3px;background:#fff;transition:.2s;border-radius:50%}
+    input:checked + .slider{background:#8fb0ff}
+    input:checked + .slider:before{transform:translateX(22px)}
+    input,textarea{width:100%;padding:10px;border:2px solid var(--line);border-radius:10px;font-size:14px}
+  </style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <h1><i class="fa-solid fa-graduation-cap"></i> 自己生成クイズ × 画像付き単語帳（実験版）</h1>
+    <p style="opacity:.9">①DB→②永続化→③画像生成→④再利用→<b>⑤フロント統合＋拡張</b></p>
+  </div>
+
+  <div class="nav">
+    <button class="tabbtn active" data-tab="create">クイズ作成</button>
+    <button class="tabbtn" data-tab="flashcards">単語帳ビュー</button>
+    <button class="tabbtn" data-tab="about">ヘルプ</button>
+  </div>
+
+  <div class="main">
+    <!-- 作成 -->
+    <section id="create" class="card tab">
+      <h2>新しいクイズを作成</h2>
+      <div class="grid2">
+        <div class="card">
+          <label>問題文（question）</label>
+          <textarea id="qtext" rows="3" placeholder="例：apple の日本語は？"></textarea>
+          <label>答え（answer）</label>
+          <input id="ans" placeholder="例：りんご" />
+          <div class="row" style="margin-top:12px">
+            <button class="btn" id="saveQ"><i class="fa-solid fa-floppy-disk"></i> 保存</button>
+            <button class="btn secondary" id="refreshRecent"><i class="fa-solid fa-rotate"></i> 更新</button>
+          </div>
+          <div id="saveMsg" style="margin-top:8px;color:#0a7">　</div>
+        </div>
+
+        <div class="card">
+          <h3 style="margin-top:0">最近のクイズ</h3>
+          <div class="row" style="margin-bottom:8px">
+            <input id="searchBox" placeholder="検索（question/answer 部分一致）" style="flex:1" />
+            <select id="orderSel">
+              <option value="created_desc">新しい順</option>
+              <option value="created_asc">古い順</option>
+            </select>
+            <button class="btn ghost" id="doSearch"><i class="fa-solid fa-magnifying-glass"></i> 検索</button>
+          </div>
+          <div class="list" id="recent"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 単語帳 -->
+    <section id="flashcards" class="card tab" style="display:none">
+      <h2>単語帳ビュー</h2>
+      <div class="row" style="margin-bottom:8px">
+        <span class="pill">Space: 表/裏　←/→: 前後</span>
+        <button class="btn secondary" id="fc-reload"><i class="fa-solid fa-rotate"></i> 読み込み</button>
+        <label class="row" style="gap:10px;margin-left:auto">
+          画像表示
+          <span class="switch">
+            <input type="checkbox" id="fc-toggle-img">
+            <span class="slider"></span>
+          </span>
+        </label>
+        <button class="btn ghost" id="fc-open-folder"><i class="fa-solid fa-folder-open"></i> 画像フォルダ案内</button>
+      </div>
+
+      <div class="progress"><div class="bar" id="fc-bar"></div></div>
+
+      <div id="fc-card" class="item" style="min-height:160px;display:flex;align-items:center;justify-content:center;font-size:1.25rem;cursor:pointer">
+        単語帳：左の「読み込み」を押してください
+      </div>
+      <img id="fc-img" alt="" style="display:none;margin-top:8px;max-width:100%;max-height:260px;object-fit:contain;border:1px solid var(--line);border-radius:8px" />
+
+      <div class="row" style="margin-top:8px">
+        <button class="btn" id="fc-prev">← 前へ</button>
+        <button class="btn" id="fc-flip">裏返す</button>
+        <button class="btn" id="fc-next">次へ →</button>
+      </div>
+    </section>
+
+    <!-- ヘルプ -->
+    <section id="about" class="card tab" style="display:none">
+      <h2>使い方 / 現仕様</h2>
+      <ul>
+        <li>保存：<code>POST /quiz/create</code></li>
+        <li>一覧：<code>GET /quiz/list?q=&order=&offset=&limit=</code></li>
+        <li>画像生成：<code>POST /quiz/image/generate</code>（<b>force</b>対応）</li>
+        <li>画像取得：<code>GET /quiz/{id}/images</code></li>
+        <li>削除：<code>DELETE /quiz/{id}</code>（画像レコード＋ファイルも削除）</li>
+      </ul>
+    </section>
+  </div>
+</div>
+
+<dialog id="imgDlg">
+  <img id="dlgImg" src="" style="max-width:90vw;max-height:80vh;display:block;border-radius:12px"/>
+  <div class="row" style="justify-content:flex-end;margin-top:8px">
+    <button class="btn ghost" onclick="document.getElementById('imgDlg').close()">閉じる</button>
+  </div>
+</dialog>
+
+<script>
+const API_BASE = "http://127.0.0.1:8000";
+const api = {
+  j: async (res)=>{ if(!res.ok){ const t=await res.text(); throw new Error(t || res.statusText); } return res.json(); },
+  createQuiz: (question, answer)=> fetch(`${API_BASE}/quiz/create`, {
+    method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({question, answer})
+  }).then(api.j),
+  listQuizzes: ({q="", order="created_desc", offset=0, limit=100}={})=> {
+    const u = new URL(`${API_BASE}/quiz/list`);
+    if(q) u.searchParams.set("q", q);
+    u.searchParams.set("order", order);
+    u.searchParams.set("offset", offset);
+    u.searchParams.set("limit", limit);
+    return fetch(u).then(api.j);
+  },
+  generateImage: (quiz_id, {prompt=null, force=false}={})=> fetch(`${API_BASE}/quiz/image/generate`, {
+    method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({quiz_id, prompt, force})
+  }).then(api.j),
+  listImages: (quiz_id)=> fetch(`${API_BASE}/quiz/${quiz_id}/images`).then(api.j),
+  deleteQuiz: (quiz_id)=> fetch(`${API_BASE}/quiz/${quiz_id}`, { method:"DELETE" }).then(api.j),
+};
+
+/* Tabs */
+document.querySelectorAll('.tabbtn').forEach(btn=>{
+  btn.onclick = ()=>{
+    document.querySelectorAll('.tabbtn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.tab').forEach(s=>s.style.display='none');
+    btn.classList.add('active');
+    document.getElementById(btn.dataset.tab).style.display='block';
+    if(btn.dataset.tab==='create'){ refreshRecent(); }
+  };
+});
+
+/* Create */
+document.getElementById('saveQ').onclick = async ()=>{
+  const q = document.getElementById('qtext').value.trim();
+  const a = document.getElementById('ans').value.trim();
+  if(!q || !a) return alert('問題文と答えは必須です');
+  try{
+    const saved = await api.createQuiz(q, a);
+    document.getElementById('saveMsg').textContent = `保存しました（ID: ${saved.id}）`;
+    document.getElementById('qtext').value = '';
+    document.getElementById('ans').value = '';
+    await refreshRecent();
+  }catch(e){ alert('保存に失敗: '+e.message); }
+};
+document.getElementById('refreshRecent').onclick = ()=> refreshRecent();
+document.getElementById('doSearch').onclick = ()=> refreshRecent();
+
+async function refreshRecent(){
+  const list = document.getElementById('recent');
+  list.innerHTML = '読み込み中...';
+  const q = document.getElementById('searchBox').value.trim();
+  const order = document.getElementById('orderSel').value;
+  try{
+    const qs = await api.listQuizzes({q, order, limit:1000});
+    if(!qs.length){ list.innerHTML = '<p class="muted">該当なし</p>'; return; }
+    const rows = await Promise.all(qs.map(async q=>{
+      const imgs = await api.listImages(q.id).catch(()=>[]);
+      const hasImg = imgs && imgs.length>0;
+      const imgUrl = hasImg ? `${API_BASE}/${imgs[0].file_path}` : '';
+      return `
+        <div class="item">
+          <div class="row">
+            <div><b>#${q.id}</b></div>
+            <span class="pill">${q.created_at ? new Date(q.created_at).toLocaleString() : ''}</span>
+            <span class="right"></span>
+          </div>
+          <div style="margin:6px 0"><b>Q.</b> ${escapeHtml(q.question)}</div>
+          <div class="muted"><b>A.</b> ${escapeHtml(q.answer)}</div>
+          ${hasImg ? `<img class="thumb" src="${imgUrl}" alt="preview" />` : `<div class="muted" style="margin-top:8px">（画像なし）</div>`}
+          <div class="row" style="margin-top:10px">
+            <button class="btn" onclick="uiGenerate(${q.id}, false)"><i class="fa-solid fa-image"></i> 画像生成/再利用</button>
+            <button class="btn secondary" onclick="uiGenerate(${q.id}, true)"><i class="fa-solid fa-arrows-rotate"></i> 強制再生成</button>
+            <button class="btn ghost" ${hasImg? '' : 'disabled'} onclick="openImg('${imgUrl}')"><i class="fa-regular fa-eye"></i> 画像を見る</button>
+            <button class="btn warn" onclick="uiDelete(${q.id})"><i class="fa-solid fa-trash"></i> 削除</button>
+          </div>
+        </div>
+      `;
+    }));
+    list.innerHTML = rows.join('');
+  }catch(e){ list.textContent = '取得に失敗: '+e.message; }
+}
+
+async function uiGenerate(id, force){
+  const btn = event.target.closest("button");
+  const prevText = btn.innerHTML;
+  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 再生成中...';
+  btn.disabled = true;
+  try{
+    const res = await api.generateImage(id, {prompt:null, force});
+    // 新しい画像URLを取得して即更新
+    const imgUrl = `${API_BASE}/${res.file_path}`;
+    const thumb = btn.closest(".item").querySelector(".thumb");
+    if(thumb){
+      thumb.style.opacity = 0.3;
+      thumb.src = imgUrl + "?t=" + Date.now();
+      thumb.onload = () => { thumb.style.opacity = 1; };
+    }
+    alert((force?'再生成':'生成/再利用') + ' 完了\n' + (res.file_path || '既存画像'));
+    await refreshRecent();
+  }catch(e){
+    alert('画像処理に失敗: '+e.message);
+  }finally{
+    btn.innerHTML = prevText;
+    btn.disabled = false;
+  }
+}
+
+async function uiDelete(id){
+  if(!confirm(`本当に削除しますか？\n#${id} に紐づく画像レコードと画像ファイルも削除されます。`)) return;
+  try{
+    const res = await api.deleteQuiz(id);
+    alert('削除しました');
+    await refreshRecent();
+  }catch(e){ alert('削除に失敗: '+e.message); }
+}
+
+function openImg(url){
+  const dlg = document.getElementById('imgDlg');
+  document.getElementById('dlgImg').src = url;
+  dlg.showModal();
+}
+
+/* 単語帳 */
+let fcCards = []; let fcIdx = 0; let fcShowBack = false;
+const IMG_TOGGLE_KEY = 'fc_show_images';
+const imgToggleEl = document.getElementById('fc-toggle-img');
+imgToggleEl.checked = JSON.parse(localStorage.getItem(IMG_TOGGLE_KEY) ?? 'true');
+imgToggleEl.addEventListener('change', ()=>{
+  localStorage.setItem(IMG_TOGGLE_KEY, JSON.stringify(imgToggleEl.checked));
+  fcRender();
+});
+
+function fcUpdateBar(){ const el = document.getElementById('fc-bar'); el.style.width = fcCards.length ? Math.round(((fcIdx+1)/fcCards.length)*100) + '%' : '0%'; }
+function fcRender(){
+  const elCard = document.getElementById('fc-card');
+  const elImg  = document.getElementById('fc-img');
+  if(!fcCards.length){ elCard.textContent = 'データがありません'; elImg.style.display='none'; fcUpdateBar(); return; }
+  const c = fcCards[fcIdx];
+  elCard.textContent = fcShowBack ? c.back : c.front;
+  const wantImage = imgToggleEl.checked;
+  if(wantImage && c.image_url){ elImg.src = c.image_url; elImg.style.display='block'; } else { elImg.style.display='none'; }
+  fcUpdateBar();
+}
+function mapToCards(quizzes){ return quizzes.map(q=>({ id:q.id, front:q.question ?? '', back:q.answer ?? '', image_url:null })); }
+async function fcLoad(){
+  const list = await api.listQuizzes({limit:1000});
+  fcCards = mapToCards(list);
+  await Promise.all(fcCards.map(async c=>{
+    const imgs = await api.listImages(c.id).catch(()=>[]);
+    if(imgs && imgs.length){ c.image_url = `${API_BASE}/${imgs[0].file_path}`; }
+  }));
+  fcIdx = 0; fcShowBack = false; fcRender();
+}
+document.getElementById('fc-reload').addEventListener('click', fcLoad);
+document.getElementById('fc-flip').addEventListener('click', ()=>{ fcShowBack = !fcShowBack; fcRender(); });
+document.getElementById('fc-next').addEventListener('click', ()=>{ if(fcIdx < fcCards.length-1){ fcIdx++; fcShowBack=false; fcRender(); }});
+document.getElementById('fc-prev').addEventListener('click', ()=>{ if(fcIdx > 0){ fcIdx--; fcShowBack=false; fcRender(); }});
+document.getElementById('fc-card').addEventListener('click', ()=>{ fcShowBack = !fcShowBack; fcRender(); });
+document.getElementById('fc-open-folder').onclick = ()=>{
+  alert("画像はプロジェクト内の static/images/ に保存されています。");
+};
+
+/* Utils */
+function escapeHtml(s){ return (s??'').replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m])) }
+
+window.addEventListener('load', ()=>{ refreshRecent(); });
+</script>
+</body>
+</html>

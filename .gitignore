@@ -1,0 +1,20 @@
+# Python / venv
+.venv/
+__pycache__/
+*.pyc
+
+# Local DB & cache
+app.db
+*.sqlite3
+
+# Generated images
+static/images/
+
+# Env files
+.env
+*.env
+
+# VSCode/OS
+.vscode/
+.DS_Store
+Thumbs.db
