@@ -1,6 +1,6 @@
 import os, base64, datetime, requests
 from typing import Optional, Iterable
-from .config import settings
+from ..config import settings
 
 class ImageService:
     def __init__(self):
