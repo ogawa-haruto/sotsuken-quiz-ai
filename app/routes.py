@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Header, Response, Query
 from sqlalchemy.orm import Session
-from typing import Optional
+from typing import Optional, List
 from uuid import uuid4
 
 from .database import get_db
@@ -9,7 +9,6 @@ from .services.image_service import ImageService
 
 router = APIRouter()
 
-# X-Token でユーザー識別。無ければ発行してレスポンスヘッダへ返す
 def get_current_user(
     response: Response,
     db: Session = Depends(get_db),
@@ -25,7 +24,7 @@ def get_current_user(
 def create_quiz(payload: schemas.QuizCreate, db: Session = Depends(get_db), user: models.User = Depends(get_current_user)):
     return crud.create_quiz(db, user=user, question=payload.question, answer=payload.answer)
 
-@router.get("/quiz/list", response_model=list[schemas.QuizOut])
+@router.get("/quiz/list", response_model=List[schemas.QuizOut])
 def list_quizzes(
     q: Optional[str] = Query(default=None, description="部分一致検索"),
     order: str = Query(default="created_desc", pattern="^(created_desc|created_asc)$"),
@@ -41,16 +40,13 @@ def delete_quiz(quiz_id: int, db: Session = Depends(get_db), user: models.User =
         raise HTTPException(status_code=404, detail="Quiz not found")
     return Response(status_code=204)
 
-# 最新画像の取得（一覧でサムネを出す用）
-@router.get("/quiz/{quiz_id}/images/latest", response_model=schemas.ImageOut | None)
+@router.get("/quiz/{quiz_id}/images/latest", response_model=Optional[schemas.ImageOut])
 def latest_image(quiz_id: int, db: Session = Depends(get_db), user: models.User = Depends(get_current_user)):
     quiz = crud.get_quiz_owned(db, quiz_id=quiz_id, user=user)
     if not quiz:
         raise HTTPException(status_code=404, detail="Quiz not found")
-    img = crud.get_latest_image_by_quiz(db, quiz=quiz)
-    return img
+    return crud.get_latest_image_by_quiz(db, quiz=quiz)
 
-# 画像生成（force=true で旧画像をDB/ファイルから削除してから生成）
 @router.post("/quiz/image/generate", response_model=schemas.ImageOut)
 def generate_image(
     body: schemas.ImageGenerateIn,
@@ -65,12 +61,9 @@ def generate_image(
     service = ImageService()
 
     if force:
-        # 旧画像のファイル削除 → DB削除
-        imgs = crud.list_images_by_quiz(db, quiz=quiz)
+        imgs = crud.list_images_by_quiz(db, quiz=quiz)  # 旧画像ファイル削除
         service.delete_files([im.file_path for im in imgs])
-        crud.delete_images_by_quiz(db, quiz=quiz)
+        crud.delete_images_by_quiz(db, quiz=quiz)       # DBレコード削除
 
-    # 新規生成 → DBへ記録
     rel_path = service.generate_image_for_quiz(quiz_id=quiz.id, prompt=body.prompt, force_delete_before=False)
-    img = crud.add_image(db, quiz=quiz, file_path=rel_path, prompt=body.prompt)
-    return img
+    return crud.add_image(db, quiz=quiz, file_path=rel_path, prompt=body.prompt)
