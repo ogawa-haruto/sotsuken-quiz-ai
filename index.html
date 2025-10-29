@@ -1,209 +1,273 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <title>自己生成クイズ × 画像付き単語帳（実験版）</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>自己生成クイズ × 画像付き単語帳</title>
   <style>
-    body{margin:0;background:#f7f9fc;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans JP",Meiryo,sans-serif}
-    header{background:linear-gradient(135deg,#4facfe 0%,#00f2fe 100%);color:#fff;padding:18px 16px}
-    h1{margin:0;font-size:20px}
-    main{max-width:1000px;margin:18px auto;padding:0 12px}
-    .card{background:#fff;border:1px solid #e9eef5;border-radius:12px;padding:14px 14px;margin-bottom:14px;box-shadow:0 6px 20px rgba(0,0,0,.06)}
-    textarea,input,button{font-size:15px}
-    textarea,input{width:100%;padding:8px;border:1px solid #dbe3ef;border-radius:8px}
+    :root{
+      --bg:#f6f9fc; --card:#ffffff; --border:#e5e7eb;
+      --text:#0f172a; --muted:#64748b; --brand:#0ea5e9;
+      --danger:#ef4444; --ok:#10b981;
+      --shadow:0 6px 20px rgba(2,8,23,.06);
+      --radius:12px;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans JP",Meiryo,sans-serif}
+    header{max-width:1000px;margin:20px auto 8px;padding:0 16px}
+    h1{font-size:22px;margin:0 0 8px}
+    .lead{color:var(--muted);font-size:14px;line-height:1.6}
+    .help{background:#eef6ff;border:1px solid #cfe8ff;border-radius:var(--radius);padding:10px;margin-top:8px}
+    .container{max-width:1000px;margin:8px auto 24px;padding:0 16px}
+    .tabs{display:flex;gap:8px;margin:8px 0 12px}
+    .tab{flex:1;border:1px solid var(--border);background:#e7eef7;color:#0b1324;border-radius:10px;padding:10px;cursor:pointer;text-align:center}
+    .tab.active{background:var(--brand);color:#fff;border-color:var(--brand)}
+    section.card{display:none;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px}
+    section.card.active{display:block}
+
+    label{display:block;margin:10px 0 6px}
+    textarea,input[type=text]{width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:10px;background:#fff}
     .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-    .btn{padding:8px 12px;border:0;border-radius:8px;cursor:pointer;color:#fff;background:#5aa8ff}
-    .btn.secondary{background:#8e92ff}
-    .btn.warn{background:#ff7b6e}
-    .btn.ghost{background:#fff;color:#5aa8ff;border:1px solid #5aa8ff}
-    .right{margin-left:auto}
-    .list{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
-    .item{border:1px solid #e9eef5;border-radius:10px;padding:12px;background:#fff}
-    .muted{color:#6b7280}
-    .thumb{width:100%;max-height:200px;object-fit:cover;border-radius:8px;border:1px solid #e9eef5;margin-top:8px}
-    .toolbar{display:flex;align-items:center;gap:10px;margin-bottom:8px}
-    .switch{display:inline-flex;align-items:center;gap:6px}
+    button{padding:9px 12px;border-radius:10px;border:1px solid #3b82f6;background:var(--brand);color:#fff;cursor:pointer}
+    button.secondary{background:#fff;color:#0f172a;border:1px solid #94a3b8}
+    button.ghost{background:#fff;color:var(--brand);border:1px solid var(--brand)}
+    button.warn{background:var(--danger);border-color:#dc2626}
+    .muted{color:var(--muted)}
+    .toolbar{display:flex;gap:10px;align-items:center;margin-bottom:8px;flex-wrap:wrap}
+    .toolbar .right{margin-left:auto}
+    .list{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:12px}
+    .item{border:1px solid var(--border);border-radius:12px;padding:12px;background:#fff}
+    .thumb{width:100%;max-height:220px;object-fit:cover;border-radius:10px;border:1px solid var(--border);margin-top:8px}
+    .badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;border:1px solid #dbeafe;background:#eff6ff;color:#1e3a8a}
+    .ansbox{display:flex;gap:8px;align-items:center;margin-top:6px}
+    .ansbox input{flex:1}
+    .judge{font-weight:600}
+    .ok{color:var(--ok)}
+    .ng{color:var(--danger)}
+    .toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:#111827;color:#fff;padding:10px 14px;border-radius:12px;box-shadow:var(--shadow);opacity:0;pointer-events:none;transition:opacity .2s}
+    .toast.show{opacity:0.95}
+    .stats{display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+    .kpi{background:#fff;border:1px solid var(--border);border-radius:10px;padding:10px 12px;box-shadow:var(--shadow)}
+    .kpi b{font-size:18px;margin-right:4px}
   </style>
 </head>
 <body>
-  <header><h1>自己生成クイズ × 画像付き単語帳（実験版）</h1></header>
-  <main>
-    <section class="card">
-      <h2 style="margin-top:4px">クイズ作成</h2>
-      <label>問題文：</label>
-      <textarea id="q" rows="3" placeholder="例）apple の日本語は？" required></textarea>
-      <label>答え：</label>
-      <input id="a" placeholder="例）りんご" required>
-      <div class="row" style="margin-top:8px">
-        <button class="btn" id="saveBtn">保存</button>
-        <span id="saveMsg" class="muted"></span>
-        <div class="right switch">
-          <input type="checkbox" id="toggleImages" checked>
-          <label for="toggleImages">画像を表示</label>
-        </div>
+  <header>
+    <h1>自己生成クイズ × 画像付き単語帳</h1>
+    <div class="lead">
+      ①「クイズ作成」で問題登録 → ②「単語帳」タブで回答練習と画像提示条件の検証。<br/>
+      <div class="help">
+        データはブラウザ単位で分離されます。正誤と画像提示状況が自動で記録されます。
       </div>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="tabs">
+      <button id="tab-create" class="tab active">クイズ作成</button>
+      <button id="tab-list" class="tab">単語帳（回答）</button>
+    </div>
+
+    <!-- 作成 -->
+    <section id="create" class="card active">
+      <form id="quizForm">
+        <label>問題文</label>
+        <textarea id="question" rows="2" placeholder="例）apple の日本語は？" required></textarea>
+        <label>答え</label>
+        <input id="answer" type="text" placeholder="例）りんご" required />
+        <div class="row" style="margin-top:8px">
+          <button type="submit">作成</button>
+          <button class="secondary" type="button" id="goList">単語帳タブへ</button>
+          <span id="saveMsg" class="muted"></span>
+        </div>
+      </form>
     </section>
 
-    <section class="card">
+    <!-- 一覧 -->
+    <section id="list" class="card">
       <div class="toolbar">
-        <h2 style="margin:0">あなたのクイズ一覧</h2>
-        <div class="right">
-          <button class="btn ghost" id="reloadBtn">再読み込み</button>
+        <div class="stats">
+          <div class="kpi"><b id="kpi-acc">0%</b>正解率</div>
+          <div class="kpi"><b id="kpi-attempts">0</b>回答</div>
+          <div class="kpi"><b id="kpi-total">0</b>問題</div>
+        </div>
+        <div class="right row">
+          <label class="muted">画像</label>
+          <select id="imgMode">
+            <option value="on" selected>表示する</option>
+            <option value="off">表示しない</option>
+          </select>
+          <label class="muted">フィルタ</label>
+          <select id="filterMode">
+            <option value="all" selected>すべて</option>
+            <option value="incorrect_only">未正解のみ</option>
+            <option value="unanswered_only">未回答のみ</option>
+          </select>
+          <button class="ghost" id="reloadBtn">再読み込み</button>
         </div>
       </div>
-      <div id="list" class="list"><p class="muted">読み込み中...</p></div>
+      <div id="quizList" class="list"><p class="muted">読み込み中...</p></div>
     </section>
-  </main>
+  </div>
 
+  <div id="toast" class="toast">保存しました</div>
+
+  <!-- Token付与 -->
+  <script>
+    (function(){
+      const TOKEN_KEY="quiz_user_token";
+      const native=window.fetch;
+      window.fetch=async function(input,init={}){
+        const headers=new Headers(init.headers||{});
+        const token=localStorage.getItem(TOKEN_KEY);
+        if(token) headers.set("X-Token",token);
+        const res=await native(input,{...init,headers});
+        const issued=res.headers.get("X-Token-Issued");
+        if(issued) localStorage.setItem(TOKEN_KEY,issued);
+        return res;
+      }
+    })();
+  </script>
+
+  <!-- メイン処理 -->
   <script>
     const API_BASE = window.location.origin;
-    const tokenKey = "quiz_user_token";
-    const imgToggle = document.getElementById('toggleImages');
+    const el = s=>document.querySelector(s);
 
-    // X-Token付き fetch
-    async function fetchWithToken(url, options = {}) {
-      const headers = new Headers(options.headers || {});
-      const token = localStorage.getItem(tokenKey);
-      if (token) headers.set("X-Token", token);
-      const res = await fetch(url, { ...options, headers });
-      const issued = res.headers.get("X-Token-Issued");
-      if (issued) localStorage.setItem(tokenKey, issued);
-      return res;
-    }
-    const api = {
-      j: async (r)=>{ if(!r.ok){ throw new Error(await r.text() || r.statusText) } return r.json() },
-      createQuiz: (question,answer)=> fetchWithToken(`${API_BASE}/quiz/create`,{
-        method:"POST", headers:{ "Content-Type":"application/json" },
-        body: JSON.stringify({question, answer})
-      }).then(api.j),
-      listQuizzes: ()=> fetchWithToken(`${API_BASE}/quiz/list`).then(api.j),
-      latestImage: (quizId)=> fetchWithToken(`${API_BASE}/quiz/${quizId}/images/latest`).then(r=> r.status===200 ? r.json() : null),
-      genImage: (quizId, {prompt=null, force=false}={})=> fetchWithToken(`${API_BASE}/quiz/image/generate?force=${force}`, {
-        method:"POST", headers:{ "Content-Type":"application/json" },
-        body: JSON.stringify({ quiz_id: quizId, prompt })
-      }).then(api.j),
-      deleteQuiz: (quizId)=> fetchWithToken(`${API_BASE}/quiz/${quizId}`, { method:"DELETE" })
+    const ui = {
+      tabCreate: el('#tab-create'),
+      tabList: el('#tab-list'),
+      secCreate: el('#create'),
+      secList: el('#list'),
+      form: el('#quizForm'),
+      q: el('#question'),
+      a: el('#answer'),
+      saveMsg: el('#saveMsg'),
+      goList: el('#goList'),
+      reload: el('#reloadBtn'),
+      imgMode: el('#imgMode'),
+      filter: el('#filterMode'),
+      list: el('#quizList'),
+      toast: el('#toast'),
+      kAcc: el('#kpi-acc'),
+      kAtt: el('#kpi-attempts'),
+      kTotal: el('#kpi-total'),
     };
 
-    // 生成中インジケータ
-    function progressBar(){
-      const bar = document.createElement('div');
-      bar.className = 'muted';
-      bar.textContent = '生成中...';
-      return bar;
+    const api = {
+      j: async r=>{ if(!r.ok) throw new Error(await r.text()); return r.json(); },
+      create:(q,a)=>fetch(`${API_BASE}/quiz/create`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:q,answer:a})}).then(api.j),
+      list:(status)=>fetch(`${API_BASE}/quiz/list?status=${status||'all'}`).then(api.j),
+      del:id=>fetch(`${API_BASE}/quiz/${id}`,{method:'DELETE'}),
+      regen:(id,prompt,force)=>fetch(`${API_BASE}/quiz/image/generate?force=${force?'true':'false'}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({quiz_id:id,prompt})}).then(api.j),
+      latest:id=>fetch(`${API_BASE}/quiz/${id}/images/latest`).then(api.j),
+      answer:(id,ans,img)=>fetch(`${API_BASE}/quiz/${id}/answer`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({answer:ans,image_shown:img})}).then(api.j),
+      stats:()=>fetch(`${API_BASE}/stats/summary`).then(api.j),
+    };
+
+    function toast(msg){ ui.toast.textContent=msg; ui.toast.classList.add('show'); setTimeout(()=>ui.toast.classList.remove('show'),1400); }
+
+    async function renderStats(){
+      try{
+        const s=await api.stats();
+        ui.kAcc.textContent=`${Math.round(s.accuracy*100)}%`;
+        ui.kAtt.textContent=s.attempts;
+        ui.kTotal.textContent=s.total_quizzes;
+      }catch{}
     }
 
-    async function refreshList(){
-      const wrap = document.getElementById('list');
-      wrap.innerHTML = '<p class="muted">読み込み中...</p>';
+    async function renderList(){
+      const status=ui.filter.value;
+      ui.list.innerHTML='<p class="muted">読み込み中...</p>';
       try{
-        const items = await api.listQuizzes();
-        if(!items.length){ wrap.innerHTML = '<p class="muted">まだクイズがありません。</p>'; return; }
-        wrap.innerHTML = '';
-        for(const q of items){
-          const card = document.createElement('div');
-          card.className = 'item';
-          card.innerHTML = `
-            <div><b>Q.</b> ${escapeHtml(q.question)}</div>
-            <div><b>A.</b> ${escapeHtml(q.answer)}</div>
-            <small class="muted">${new Date(q.created_at).toLocaleString()}</small>
-            <div class="row" style="margin-top:8px">
-              <button class="btn secondary" data-act="gen" data-id="${q.id}">画像生成</button>
-              <button class="btn" data-act="regen" data-id="${q.id}">再生成（旧画像削除）</button>
-              <button class="btn warn right" data-act="del" data-id="${q.id}">削除</button>
+        const rows=await api.list(status);
+        if(!rows.length){ ui.list.innerHTML='<p class="muted">クイズがありません。</p>'; return; }
+        const showImg=ui.imgMode.value==='on';
+        const fr=document.createDocumentFragment();
+        for(const q of rows){
+          const c=document.createElement('div');
+          c.className='item';
+          c.innerHTML=`
+            <div class="row" style="justify-content:space-between">
+              <div><b>#${q.id}</b> ${q.question}</div>
+              <div class="row">
+                <button class="secondary" data-act="regen" data-id="${q.id}">再生成</button>
+                <button class="warn" data-act="del" data-id="${q.id}">削除</button>
+              </div>
             </div>
-            <div class="img-slot"></div>
-          `;
-          wrap.appendChild(card);
-
-          // 最新画像があれば表示
-          if(imgToggle.checked){
+            <div class="ansbox">
+              <input type="text" placeholder="答えを入力" data-answer-input="${q.id}" />
+              <button class="ghost" data-act="check" data-id="${q.id}">判定・記録</button>
+              <span class="judge muted" data-judge="${q.id}"></span>
+            </div>
+            <div class="img-slot"></div>`;
+          fr.appendChild(c);
+          if(showImg){
             try{
-              const latest = await api.latestImage(q.id);
-              if(latest && latest.file_path){
-                const img = document.createElement('img');
-                img.className = 'thumb';
-                img.src = `${API_BASE}/${latest.file_path}`;
-                img.alt = 'generated';
-                card.querySelector('.img-slot').appendChild(img);
+              const im=await api.latest(q.id);
+              if(im?.file_path){
+                const img=document.createElement('img');
+                img.className='thumb'; img.src=`${API_BASE}/${im.file_path}`;
+                c.querySelector('.img-slot').appendChild(img);
               }
             }catch{}
           }
         }
-      }catch(e){
-        wrap.innerHTML = `<p class="muted">取得失敗：${escapeHtml(e.message)}</p>`;
-      }
+        ui.list.innerHTML=''; ui.list.appendChild(fr);
+      }catch(e){ ui.list.innerHTML=`<p class="muted">エラー:${e.message}</p>`; }
     }
 
-    // ボタンクリック（イベント委譲）
-    document.getElementById('list').addEventListener('click', async (ev)=>{
-      const btn = ev.target.closest('button[data-act]');
-      if(!btn) return;
-      const act = btn.getAttribute('data-act');
-      const id = Number(btn.getAttribute('data-id'));
-      const slot = btn.closest('.item').querySelector('.img-slot');
-
-      if(act === 'gen' || act === 'regen'){
-        const force = (act === 'regen');
-        slot.innerHTML = '';
-        const p = progressBar();
-        slot.appendChild(p);
+    document.addEventListener('click',async e=>{
+      const b=e.target.closest('button[data-act]'); if(!b)return;
+      const id=b.dataset.id, act=b.dataset.act;
+      if(act==='del'){ if(confirm('削除しますか？')){ await api.del(id); toast('削除'); await renderList(); } }
+      if(act==='regen'){ const p=prompt('画像プロンプト（空欄OK）',''); await api.regen(id,p,false); toast('生成完了'); await renderList(); }
+      if(act==='check'){
+        const i=document.querySelector(`[data-answer-input="${id}"]`);
+        const j=document.querySelector(`[data-judge="${id}"]`);
+        const ans=i.value.trim();
+        const hasImg=!!document.querySelector(`.item:nth-child(${id}) img`);
         try{
-          const res = await api.genImage(id, {prompt:null, force});
-          // 新しい画像を表示
-          slot.innerHTML = '';
-          if(imgToggle.checked){
-            const img = document.createElement('img');
-            img.className = 'thumb';
-            img.src = `${API_BASE}/${res.file_path}?t=${Date.now()}`;
-            img.alt = 'generated';
-            slot.appendChild(img);
-          }else{
-            slot.innerHTML = '<span class="muted">画像は非表示設定です（上部トグルで切替）</span>';
-          }
-        }catch(e){
-          slot.innerHTML = `<span class="muted">生成失敗：${escapeHtml(e.message)}</span>`;
-        }
-      }
-
-      if(act === 'del'){
-        if(!confirm('このクイズを削除しますか？（画像レコードも削除されます）')) return;
-        try{
-          const r = await api.deleteQuiz(id);
-          if(!r.ok && r.status !== 204) throw new Error('削除に失敗しました');
-          await refreshList();
-        }catch(e){
-          alert('削除エラー：' + e.message);
-        }
+          const r=await api.answer(id,ans,hasImg);
+          j.textContent=r.correct?'正しい（記録）':'誤り（記録）';
+          j.className='judge '+(r.correct?'ok':'ng');
+          await renderStats();
+        }catch{ j.textContent='記録エラー'; j.className='judge ng'; }
       }
     });
 
-    // 画像表示トグル
-    document.getElementById('toggleImages').addEventListener('change', refreshList);
-    document.getElementById('reloadBtn').addEventListener('click', refreshList);
-
-    // 保存
-    document.getElementById('saveBtn').addEventListener('click', async ()=>{
-      const q = document.getElementById('q').value.trim();
-      const a = document.getElementById('a').value.trim();
-      if(!q || !a) return alert('問題文と答えは必須です。');
+    ui.form.addEventListener('submit',async e=>{
+      e.preventDefault();
       try{
-        const saved = await api.createQuiz(q,a);
-        document.getElementById('q').value = '';
-        document.getElementById('a').value = '';
-        document.getElementById('saveMsg').textContent = `保存しました（ID:${saved.id}）`;
-        await refreshList();
-      }catch(e){
-        alert('保存失敗：' + e.message);
-      }
+        await api.create(ui.q.value.trim(),ui.a.value.trim());
+        ui.q.value=''; ui.a.value='';
+        ui.saveMsg.textContent='保存しました。';
+        toast('保存しました');
+      }catch{ ui.saveMsg.textContent='保存失敗'; }
     });
 
-    // HTMLエスケープ
-    function escapeHtml(s){ return s.replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
+    ui.goList.onclick=()=>activate('list');
+    ui.reload.onclick=()=>{ renderList(); renderStats(); };
+    ui.imgMode.onchange=renderList;
+    ui.filter.onchange=renderList;
 
-    // 初期読み込み：自分のクイズだけ表示
-    window.addEventListener('DOMContentLoaded', refreshList);
+    function activate(w){
+      if(w==='create'){
+        ui.tabCreate.classList.add('active');
+        ui.tabList.classList.remove('active');
+        ui.secCreate.classList.add('active');
+        ui.secList.classList.remove('active');
+      }else{
+        ui.tabList.classList.add('active');
+        ui.tabCreate.classList.remove('active');
+        ui.secList.classList.add('active');
+        ui.secCreate.classList.remove('active');
+        renderList(); renderStats();
+      }
+    }
+    ui.tabCreate.onclick=()=>activate('create');
+    ui.tabList.onclick=()=>activate('list');
+    window.addEventListener('DOMContentLoaded',()=>renderStats());
   </script>
 </body>
 </html>

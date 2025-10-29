@@ -1,59 +1,36 @@
-import os, base64, datetime, requests
-from typing import Optional, Iterable
+import os, requests, base64, datetime
 from ..config import settings
 
 class ImageService:
     def __init__(self):
-        self.base_url = settings.A1111_BASE_URL.rstrip("/")
-        self.image_dir = settings.IMAGE_DIR
-        os.makedirs(self.image_dir, exist_ok=True)
+        self.base_url = settings.A1111_BASE_URL
+        self.output_dir = settings.IMAGE_DIR
+        os.makedirs(self.output_dir, exist_ok=True)
 
-    def _a1111_txt2img(self, prompt: str) -> bytes:
-        # AUTOMATIC1111 /sdapi/v1/txt2img
+    def _request(self, payload: dict):
         url = f"{self.base_url}/sdapi/v1/txt2img"
-        payload = {
-            "prompt": prompt,
-            "width": 768,
-            "height": 512,
-            "steps": 20,
-            "sampler_index": "Euler a",
-            "cfg_scale": 7.0,
-            "seed": -1,
-        }
         r = requests.post(url, json=payload, timeout=120)
         r.raise_for_status()
-        data = r.json()
-        # images[0] は base64 PNG
-        return base64.b64decode(data["images"][0])
+        return r.json()
 
-    def _save_png(self, png_bytes: bytes, *, quiz_id: int) -> str:
-        ts = datetime.datetime.utcnow().strftime("%Y%m%d_%H%M%S")
-        fname = f"quiz_{quiz_id}_{ts}.png"
-        abspath = os.path.join(self.image_dir, fname)
-        with open(abspath, "wb") as f:
-            f.write(png_bytes)
-        # API では /static から配信する前提
-        return f"static/images/{fname}"
+    def generate_image_for_quiz(self, quiz_id: int, prompt: str | None, force_delete_before=False) -> str:
+        prompt = prompt or f"Educational illustration of the quiz concept, clear and simple, no humans"
+        payload = {"prompt": prompt, "steps": 20, "width": 512, "height": 512}
+        data = self._request(payload)
+        img_b64 = data["images"][0]
+        img_bytes = base64.b64decode(img_b64)
 
-    def _safe_unlink(self, path: str):
-        try:
-            if os.path.exists(path):
-                os.remove(path)
-        except Exception:
-            # ログは省略（不要なら pass）
-            pass
+        ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        file_name = f"quiz_{quiz_id}_{ts}.png"
+        rel_path = os.path.join(self.output_dir, file_name)
+        abs_path = os.path.abspath(rel_path)
+        with open(abs_path, "wb") as f:
+            f.write(img_bytes)
+        return rel_path.replace("\\", "/")
 
-    def delete_files(self, file_paths: Iterable[str]):
-        # file_paths は "static/images/..." 形式 → 実ファイルに変換
-        for rel in file_paths:
-            # "static/images/xxx.png" → settings.IMAGE_DIR/xxx.png
-            name = os.path.basename(rel)
-            abs_path = os.path.join(self.image_dir, name)
-            self._safe_unlink(abs_path)
-
-    def generate_image_for_quiz(self, *, quiz_id: int, prompt: Optional[str], force_delete_before: bool = False) -> str:
-        # プロンプトのデフォルト：クイズIDだけでも一旦生成
-        effective_prompt = prompt or f"simple, clear, single object icon, minimal, no people, topic id {quiz_id}"
-        img_bytes = self._a1111_txt2img(effective_prompt)
-        rel_path = self._save_png(img_bytes, quiz_id=quiz_id)
-        return rel_path
+    def delete_files(self, file_paths: list[str]):
+        for p in file_paths:
+            try:
+                os.remove(p)
+            except Exception:
+                pass
