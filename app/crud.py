@@ -1,8 +1,8 @@
 from __future__ import annotations
-from typing import Optional, List, Tuple
+from typing import Optional, List, Tuple, Sequence
 from sqlalchemy.orm import Session
 from sqlalchemy import select, desc, asc, delete, func
-from . import models
+from app import models
 
 # ---- User ----
 def get_user_by_token(db: Session, token: str) -> Optional[models.User]:
@@ -152,3 +152,14 @@ def get_stats_summary(db: Session, user: models.User):
         "correct_attempts": int(correct_attempts),
         "accuracy": accuracy
     }
+
+def list_quizzes_for_user(db: Session, user_id: int, limit: int = 100, offset: int = 0) -> Sequence[models.Quiz]:
+    return (db.query(models.Quiz)
+              .filter(models.Quiz.user_id == user_id)
+              .order_by(models.Quiz.created_at.desc())
+              .limit(limit).offset(offset).all())
+
+def get_quiz_for_user(db: Session, quiz_id: int, user_id: int) -> models.Quiz | None:
+    return (db.query(models.Quiz)
+              .filter(models.Quiz.id == quiz_id, models.Quiz.user_id == user_id)
+              .first())

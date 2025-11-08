@@ -6,6 +6,7 @@ from pydantic import BaseModel
 class QuizCreate(BaseModel):
     question: str
     answer: str
+    prompt: Optional[str] = None
 
 class QuizOut(BaseModel):
     id: int
@@ -14,6 +15,15 @@ class QuizOut(BaseModel):
     created_at: datetime
     class Config:
         from_attributes = True
+        
+class QuizRead(BaseModel):
+    id: int
+    question: str
+    answer: str
+    user_id: int
+    created_at: datetime
+    class Config:
+        orm_mode = True
 
 class QuizWithStatusOut(QuizOut):
     attempts: int                 # 回答試行回数
