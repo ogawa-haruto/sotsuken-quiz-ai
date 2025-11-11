@@ -3,13 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>自己生成クイズ × 画像付き単語帳</title>
+  <title>自己生成クイズ × 単語帳（一覧＋スライド統合）</title>
   <style>
     :root{
       --bg:#f6f9fc; --card:#ffffff; --border:#e5e7eb;
       --text:#0f172a; --muted:#64748b; --brand:#0ea5e9;
-      --danger:#ef4444; --ok:#10b981;
-      --shadow:0 6px 20px rgba(2,8,23,.06);
+      --danger:#ef4444; --ok:#10b981; --shadow:0 6px 20px rgba(2,8,23,.06);
       --radius:12px;
     }
     *{box-sizing:border-box}
@@ -17,14 +16,12 @@
     header{max-width:1000px;margin:20px auto 8px;padding:0 16px}
     h1{font-size:22px;margin:0 0 8px}
     .lead{color:var(--muted);font-size:14px;line-height:1.6}
-    .help{background:#eef6ff;border:1px solid #cfe8ff;border-radius:var(--radius);padding:10px;margin-top:8px}
     .container{max-width:1000px;margin:8px auto 24px;padding:0 16px}
     .tabs{display:flex;gap:8px;margin:8px 0 12px}
     .tab{flex:1;border:1px solid var(--border);background:#e7eef7;color:#0b1324;border-radius:10px;padding:10px;cursor:pointer;text-align:center}
     .tab.active{background:var(--brand);color:#fff;border-color:var(--brand)}
     section.card{display:none;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px}
     section.card.active{display:block}
-
     label{display:block;margin:10px 0 6px}
     textarea,input[type=text]{width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:10px;background:#fff}
     .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
@@ -35,19 +32,26 @@
     .muted{color:var(--muted)}
     .toolbar{display:flex;gap:10px;align-items:center;margin-bottom:8px;flex-wrap:wrap}
     .toolbar .right{margin-left:auto}
+
+    /* 単語帳のモード切替ボタン */
+    .subtabs{display:flex;gap:10px;margin-bottom:8px}
+    .subbtn{flex:1;padding:10px;border-radius:16px;border:1px solid var(--border);background:#edf2f7;color:#0b1324;cursor:pointer}
+    .subbtn.active{background:#0ea5e9;color:#fff;border-color:#0ea5e9}
+
     .list{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:12px}
     .item{border:1px solid var(--border);border-radius:12px;padding:12px;background:#fff}
     .thumb{width:100%;max-height:220px;object-fit:cover;border-radius:10px;border:1px solid var(--border);margin-top:8px}
-    .badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;border:1px solid #dbeafe;background:#eff6ff;color:#1e3a8a}
+
     .ansbox{display:flex;gap:8px;align-items:center;margin-top:6px}
     .ansbox input{flex:1}
     .judge{font-weight:600}
     .ok{color:var(--ok)}
     .ng{color:var(--danger)}
+
     .toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:#111827;color:#fff;padding:10px 14px;border-radius:12px;box-shadow:var(--shadow);opacity:0;pointer-events:none;transition:opacity .2s}
     .toast.show{opacity:0.95}
     .stats{display:flex;gap:16px;align-items:center;flex-wrap:wrap}
-    .kpi{background:#fff;border:1px solid --var(--border);border-radius:10px;padding:10px 12px;box-shadow:var(--shadow)}
+    .kpi{background:#fff;border:1px solid var(--border);border-radius:10px;padding:10px 12px;box-shadow:var(--shadow)}
     .kpi b{font-size:18px;margin-right:4px}
 
     /* --- Flashcards (slide) --- */
@@ -68,7 +72,6 @@
       display:none; margin-top:8px; max-width:100%; height:auto; object-fit:contain;
       border-radius:12px; border:1px solid var(--border);
     }
-    /* Slide animations */
     @keyframes slideOutLeft  { from { transform: translateX(0); }   to { transform: translateX(-40%); opacity:.2; } }
     @keyframes slideInRight  { from { transform: translateX(40%); opacity:.2; } to { transform: translateX(0); opacity:1; } }
     @keyframes slideOutRight { from { transform: translateX(0); }   to { transform: translateX(40%); opacity:.2; } }
@@ -82,20 +85,14 @@
 </head>
 <body>
   <header>
-    <h1>自己生成クイズ × 画像付き単語帳</h1>
-    <div class="lead">
-      ①「クイズ作成」で問題登録 → ②「単語帳（一覧）」or「単語帳（スライド）」で練習。<br/>
-      <div class="help">
-        データはブラウザ単位で分離されます。正誤と画像提示状況が自動で記録されます。
-      </div>
-    </div>
+    <h1>自己生成クイズ × 単語帳（一覧＋スライド統合）</h1>
+    <div class="lead">作成 → 単語帳。単語帳の中で「一覧 / スライド」を切り替えられます。</div>
   </header>
 
   <div class="container">
     <div class="tabs">
       <button id="tab-create" class="tab active">クイズ作成</button>
-      <button id="tab-list" class="tab">単語帳（一覧）</button>
-      <button id="tab-flash" class="tab">単語帳（スライド）</button>
+      <button id="tab-words" class="tab">単語帳</button>
     </div>
 
     <!-- 作成 -->
@@ -107,133 +104,139 @@
         <input id="answer" type="text" placeholder="例）りんご" required />
         <div class="row" style="margin-top:8px">
           <button type="submit">作成</button>
-          <button class="secondary" type="button" id="goList">単語帳タブへ</button>
+          <button class="secondary" type="button" id="goWords">単語帳へ</button>
           <span id="saveMsg" class="muted"></span>
         </div>
       </form>
     </section>
 
-    <!-- 単語帳（一覧） -->
-    <section id="list" class="card">
-      <div class="toolbar">
-        <div class="stats">
-          <div class="kpi"><b id="kpi-acc">0%</b>正解率</div>
-          <div class="kpi"><b id="kpi-attempts">0</b>回答</div>
-          <div class="kpi"><b id="kpi-total">0</b>問題</div>
-        </div>
-        <div class="right row">
-          <label class="muted">画像</label>
-          <select id="imgMode">
-            <option value="on" selected>表示する</option>
-            <option value="off">表示しない</option>
-          </select>
-          <label class="muted">フィルタ</label>
-          <select id="filterMode">
-            <option value="all" selected>すべて</option>
-            <option value="incorrect_only">未正解のみ</option>
-            <option value="unanswered_only">未回答のみ</option>
-          </select>
-          <button class="ghost" id="reloadBtn">再読み込み</button>
-        </div>
+    <!-- 単語帳（一覧＋スライド 統合） -->
+    <section id="words" class="card">
+      <div class="subtabs">
+        <button id="mode-list"  class="subbtn active">単語帳（一覧）</button>
+        <button id="mode-slide" class="subbtn">単語帳（スライド）</button>
       </div>
-      <div id="quizList" class="list"><p class="muted">読み込み中...</p></div>
-    </section>
 
-    <!-- 単語帳（スライド） -->
-    <section id="flash" class="card">
+      <!-- 共通ツールバー（分野/項目はどちらのモードでも使用） -->
       <div class="toolbar">
         <div class="row">
-          <label class="muted">順序</label>
-          <label><input type="checkbox" id="fc-shuffle"> シャッフル</label>
-          <label class="muted">開始</label>
-          <select id="fc-limit">
-            <option value="20">20枚</option>
-            <option value="50" selected>50枚</option>
-            <option value="100">100枚</option>
-          </select>
-          <label><input type="checkbox" id="fc-answer-first"> 先に答えを表示</label>
-        </div>
-        <div class="right row">
           <select id="fc-category">
             <option value="">すべての分野</option>
           </select>
           <select id="fc-topic">
             <option value="">すべての項目</option>
           </select>
-          <button class="ghost" id="fc-reload">読み込み</button>
+        </div>
+        <div class="right row">
+          <!-- 一覧モード専用 -->
+          <div id="list-only" class="row">
+            <label class="muted">画像</label>
+            <select id="imgMode">
+              <option value="on" selected>表示する</option>
+              <option value="off">表示しない</option>
+            </select>
+            <label class="muted">フィルタ</label>
+            <select id="filterMode">
+              <option value="all" selected>すべて</option>
+              <option value="incorrect_only">未正解のみ</option>
+              <option value="unanswered_only">未回答のみ</option>
+            </select>
+            <button class="ghost" id="reloadBtn">再読み込み</button>
+          </div>
+
+          <!-- スライド専用 -->
+          <div id="slide-only" class="row" style="display:none">
+            <label class="muted">順序</label>
+            <label><input type="checkbox" id="fc-shuffle"> シャッフル</label>
+            <label class="muted">開始</label>
+            <select id="fc-limit">
+              <option value="20">20枚</option>
+              <option value="50" selected>50枚</option>
+              <option value="100">100枚</option>
+            </select>
+            <label><input type="checkbox" id="fc-answer-first"> 先に答えを表示</label>
+            <button class="ghost" id="fc-reload">読み込み</button>
+          </div>
         </div>
       </div>
-      <div class="progress"><div class="bar" id="fc-bar"></div></div>
-      <div class="fc-wrap">
-        <div id="fc-card" class="fc-card">単語帳：右上の「読み込み」を押してください</div>
-        <img id="fc-img" alt="" />
-        <div class="row" style="margin-top:10px">
-          <button id="fc-prev">← 前へ</button>
-          <button id="fc-flip">裏返す</button>
-          <button id="fc-next">次へ →</button>
+
+      <!-- 一覧モード本体 -->
+      <div id="pane-list">
+        <div class="stats" style="margin-bottom:8px">
+          <div class="kpi"><b id="kpi-acc">0%</b>正解率</div>
+          <div class="kpi"><b id="kpi-attempts">0</b>回答</div>
+          <div class="kpi"><b id="kpi-total">0</b>問題</div>
         </div>
-        <div class="muted" style="margin-top:6px">Space: 表/裏　←/→: 前後　スワイプ可</div>
+        <div id="quizList" class="list"><p class="muted">読み込み中...</p></div>
+      </div>
+
+      <!-- スライドモード本体 -->
+      <div id="pane-slide" style="display:none">
+        <div class="progress"><div class="bar" id="fc-bar"></div></div>
+        <div class="fc-wrap">
+          <div id="fc-card" class="fc-card">単語帳：右上の「読み込み」を押してください</div>
+          <img id="fc-img" alt="" />
+          <div class="row" style="margin-top:10px">
+            <button id="fc-prev">← 前へ</button>
+            <button id="fc-flip">裏返す</button>
+            <button id="fc-next">次へ →</button>
+          </div>
+          <div class="muted" style="margin-top:6px">Space: 表/裏　←/→: 前後　スワイプ可</div>
+        </div>
       </div>
     </section>
   </div>
 
   <div id="toast" class="toast">保存しました</div>
 
-  <!-- Token付与 -->
-  <script>
-    (function(){
-      const TOKEN_KEY="quiz_user_token";
-      const native=window.fetch;
-      window.fetch=async function(input,init={}){
-        const headers=new Headers(init.headers||{});
-        const token=localStorage.getItem(TOKEN_KEY);
-        if(token) headers.set("X-Token",token);
-        const res=await native(input,{...init,headers});
-        const issued=res.headers.get("X-Token-Issued");
-        if(issued) localStorage.setItem(TOKEN_KEY,issued);
-        return res;
-      }
-    })();
-  </script>
-
-  <!-- メイン処理 -->
   <script>
     const API_BASE = window.location.origin;
-    const el = s=>document.querySelector(s);
+    const $ = (s)=>document.querySelector(s);
 
     const ui = {
-      tabCreate: el('#tab-create'),
-      tabList: el('#tab-list'),
-      tabFlash: el('#tab-flash'),
-      secCreate: el('#create'),
-      secList: el('#list'),
-      secFlash: el('#flash'),
-      form: el('#quizForm'),
-      q: el('#question'),
-      a: el('#answer'),
-      saveMsg: el('#saveMsg'),
-      goList: el('#goList'),
-      reload: el('#reloadBtn'),
-      imgMode: el('#imgMode'),
-      filter: el('#filterMode'),
-      list: el('#quizList'),
-      toast: el('#toast'),
-      kAcc: el('#kpi-acc'),
-      kAtt: el('#kpi-attempts'),
-      kTotal: el('#kpi-total'),
-      // flashcards
-      fcShuffle: el('#fc-shuffle'),
-      fcLimit: el('#fc-limit'),
-      fcAnsFirst: el('#fc-answer-first'),
-      fcReload: el('#fc-reload'),
-      fcBar: el('#fc-bar'),
-      fcCard: el('#fc-card'),
-      fcImg: el('#fc-img'),
-      fcPrev: el('#fc-prev'),
-      fcNext: el('#fc-next'),
-      fcFlip: el('#fc-flip'),
-      fcCat: el('#fc-category'),
-      fcTop: el('#fc-topic'),
+      tabCreate: $('#tab-create'),
+      tabWords:  $('#tab-words'),
+      secCreate: $('#create'),
+      secWords:  $('#words'),
+      form: $('#quizForm'),
+      q: $('#question'),
+      a: $('#answer'),
+      saveMsg: $('#saveMsg'),
+      goWords: $('#goWords'),
+
+      // words 共通
+      subList:  $('#mode-list'),
+      subSlide: $('#mode-slide'),
+      paneList: $('#pane-list'),
+      paneSlide: $('#pane-slide'),
+      bar: $('#fc-bar'),
+
+      // 共通フィルタ
+      cat: $('#fc-category'),
+      top: $('#fc-topic'),
+
+      // 一覧用
+      imgMode: $('#imgMode'),
+      filter:  $('#filterMode'),
+      reload:  $('#reloadBtn'),
+      list:    $('#quizList'),
+      kpiAcc:  $('#kpi-acc'),
+      kpiAtt:  $('#kpi-attempts'),
+      kpiTotal:$('#kpi-total'),
+
+      // スライド用
+      sShuffle: $('#fc-shuffle'),
+      sLimit:   $('#fc-limit'),
+      sAnsFirst:$('#fc-answer-first'),
+      sReload:  $('#fc-reload'),
+      sCard:    $('#fc-card'),
+      sImg:     $('#fc-img'),
+      sPrev:    $('#fc-prev'),
+      sNext:    $('#fc-next'),
+      sFlip:    $('#fc-flip'),
+
+      listOnly:  $('#list-only'),
+      slideOnly: $('#slide-only'),
     };
 
     const api = {
@@ -247,23 +250,39 @@
       stats:()=>fetch(`${API_BASE}/stats/summary`).then(api.j),
     };
 
-    function toast(msg){ ui.toast.textContent=msg; ui.toast.classList.add('show'); setTimeout(()=>ui.toast.classList.remove('show'),1400); }
+    function toast(m){ const t=document.getElementById('toast'); t.textContent=m; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),1300); }
 
+    // ===== タブ切替（大タブ：作成 / 単語帳） =====
+    function activate(tab){
+      [ui.tabCreate, ui.tabWords].forEach(b=>b.classList.remove('active'));
+      [ui.secCreate, ui.secWords].forEach(s=>s.classList.remove('active'));
+      if(tab==='create'){ ui.tabCreate.classList.add('active'); ui.secCreate.classList.add('active'); }
+      if(tab==='words'){  ui.tabWords.classList.add('active');  ui.secWords.classList.add('active'); renderList(); renderStats(); }
+    }
+    ui.tabCreate.onclick=()=>activate('create');
+    ui.tabWords.onclick=()=>activate('words');
+    ui.goWords.onclick=()=>activate('words');
+
+    // ===== 作成 =====
+    document.getElementById('quizForm').addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      try{ await api.create(ui.q.value.trim(), ui.a.value.trim()); ui.q.value=''; ui.a.value=''; toast('保存しました'); }
+      catch{ toast('保存に失敗'); }
+    });
+
+    // ===== 単語帳（一覧） =====
     async function renderStats(){
       try{
         const s=await api.stats();
-        ui.kAcc.textContent=`${Math.round(s.accuracy*100)}%`;
-        ui.kAtt.textContent=s.attempts;
-        ui.kTotal.textContent=s.total_quizzes;
+        ui.kpiAcc.textContent=`${Math.round(s.accuracy*100)}%`;
+        ui.kpiAtt.textContent=s.attempts;
+        ui.kpiTotal.textContent=s.total_quizzes;
       }catch{}
     }
-
     async function renderList(){
-      const status=ui.filter.value;
       ui.list.innerHTML='<p class="muted">読み込み中...</p>';
       try{
-        const rows=await api.list(status);
-        if(!rows.length){ ui.list.innerHTML='<p class="muted">クイズがありません。</p>'; return; }
+        const rows=await api.list(ui.filter.value);
         const showImg=ui.imgMode.value==='on';
         const fr=document.createDocumentFragment();
         for(const q of rows){
@@ -296,11 +315,10 @@
           }
         }
         ui.list.innerHTML=''; ui.list.appendChild(fr);
-      }catch(e){ ui.list.innerHTML=`<p class="muted">エラー:${e.message}</p>`; }
+      }catch(e){ ui.list.innerHTML=`<p class="muted">エラー: ${e.message}</p>`; }
     }
-
     document.addEventListener('click',async e=>{
-      const b=e.target.closest('button[data-act]'); if(!b)return;
+      const b=e.target.closest('button[data-act]'); if(!b) return;
       const id=b.dataset.id, act=b.dataset.act;
       if(act==='del'){ if(confirm('削除しますか？')){ await api.del(id); toast('削除'); await renderList(); } }
       if(act==='regen'){ const p=prompt('画像プロンプト（空欄OK）',''); await api.regen(id,p,false); toast('生成完了'); await renderList(); }
@@ -309,176 +327,128 @@
         const j=document.querySelector(`[data-judge="${id}"]`);
         const ans=i.value.trim();
         const hasImg=!!document.querySelector(`.item:nth-child(${id}) img`);
-        try{
-          const r=await api.answer(id,ans,hasImg);
+        try{ const r=await api.answer(id,ans,hasImg);
           j.textContent=r.correct?'正しい（記録）':'誤り（記録）';
-          j.className='judge '+(r.correct?'ok':'ng');
-          await renderStats();
+          j.className='judge '+(r.correct?'ok':'ng'); await renderStats();
         }catch{ j.textContent='記録エラー'; j.className='judge ng'; }
       }
     });
-
-    ui.form.addEventListener('submit',async e=>{
-      e.preventDefault();
-      try{
-        await api.create(ui.q.value.trim(),ui.a.value.trim());
-        ui.q.value=''; ui.a.value='';
-        ui.saveMsg.textContent='保存しました。';
-        toast('保存しました');
-      }catch{ ui.saveMsg.textContent='保存失敗'; }
-    });
-
-    ui.goList.onclick=()=>activate('list');
     ui.reload.onclick=()=>{ renderList(); renderStats(); };
     ui.imgMode.onchange=renderList;
     ui.filter.onchange=renderList;
 
-    function activate(w){
-      [ui.tabCreate,ui.tabList,ui.tabFlash].forEach(t=>t.classList.remove('active'));
-      [ui.secCreate,ui.secList,ui.secFlash].forEach(s=>s.classList.remove('active'));
-      if(w==='create'){ ui.tabCreate.classList.add('active'); ui.secCreate.classList.add('active'); }
-      if(w==='list'){ ui.tabList.classList.add('active'); ui.secList.classList.add('active'); renderList(); renderStats(); }
-      if(w==='flash'){ ui.tabFlash.classList.add('active'); ui.secFlash.classList.add('active'); if(!__fc_inited){ __fc_inited=true; fcInit(); } }
-    }
-    ui.tabCreate.onclick=()=>activate('create');
-    ui.tabList.onclick=()=>activate('list');
-    ui.tabFlash.onclick=()=>activate('flash');
-    window.addEventListener('DOMContentLoaded',()=>renderStats());
-
-    /* ===== Flashcards (slide) ===== */
-    let __fc_inited = false;
-    let fcAll = [];     // 全件（category/topic含む）
-    let fcCards = [];   // 絞り込み後
-    let fcIdx = 0;
-    let fcShowBack = false;
-
-    function unique(arr){ return [...new Set(arr)].filter(Boolean) }
-    function fcUpdateBar(){
-      if(!fcCards.length){ document.getElementById('fc-bar').style.width='0%'; return; }
-      document.getElementById('fc-bar').style.width = Math.round(((fcIdx+1)/fcCards.length)*100)+'%';
-    }
-    function fcAdjustMedia(){
-      if(document.getElementById('flash').style.display==='none') return;
-      const topToolbar = 180, bottomControls = 150, margin = 24;
-      const avail = Math.max(160, window.innerHeight - topToolbar - bottomControls - margin);
-      document.getElementById('fc-img').style.maxHeight = avail + 'px';
-    }
-    function fcRender(){
-      const $card = document.getElementById('fc-card');
-      const $img  = document.getElementById('fc-img');
-      if(!fcCards.length){
-        $card.textContent='データがありません';
-        $img.style.display='none';
-        fcUpdateBar();
-        return;
-      }
-      const c = fcCards[fcIdx];
-      $card.textContent = fcShowBack ? (c.back ?? '') : (c.front ?? '');
-      if(c.image_url){
-        $img.onload = fcAdjustMedia;
-        $img.src = c.image_url;
-        $img.style.display = 'block';
-      }else{
-        if(c._img_loading!==true){
-          c._img_loading = true;
-          api.latest(c.id).then(im=>{
-            if(im?.file_path){ c.image_url = `${API_BASE}/${im.file_path}`; fcRender(); }
-          }).catch(()=>{});
-        }
-        $img.style.display='none';
-      }
-      fcUpdateBar();
-    }
-    function fcShuffleInPlace(arr){ for(let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]]; } }
+    // ===== 単語帳（スライド） =====
+    let fcAll=[], fcCards=[], fcIdx=0, fcShowBack=false;
+    function unique(arr){ return [...new Set(arr)].filter(Boolean); }
     function mapQuizzesToCards(quizzes){
       return quizzes.map(q=>({
         id:q.id, front:q.question, back:q.answer,
-        category: q.category ?? q.tag ?? null,
-        topic: q.topic ?? q.subtag ?? null,
-        tags: q.tags ?? null,
-        image_url: null
+        category:q.category ?? q.tag ?? null, topic:q.topic ?? q.subtag ?? null, tags:q.tags ?? null,
+        image_url:null
       }));
     }
-    function fcPopulateFilters(cards){
+    function populateFilters(cards){
       const cats = unique(cards.flatMap(c=>[c.category, ...(Array.isArray(c.tags)?c.tags:[])]));
       const tops = unique(cards.map(c=>c.topic));
-      document.getElementById('fc-category').innerHTML =
-        '<option value="">すべての分野</option>' + cats.map(v=>`<option value="${v}">${v}</option>`).join('');
-      document.getElementById('fc-topic').innerHTML =
-        '<option value="">すべての項目</option>' + tops.map(v=>`<option value="${v}">${v}</option>`).join('');
+      ui.cat.innerHTML = '<option value="">すべての分野</option>' + cats.map(v=>`<option value="${v}">${v}</option>`).join('');
+      ui.top.innerHTML = '<option value="">すべての項目</option>' + tops.map(v=>`<option value="${v}">${v}</option>`).join('');
     }
-    function fcApplyFilter(){
-      const cat = document.getElementById('fc-category').value;
-      const top = document.getElementById('fc-topic').value;
-      const filtered = fcAll.filter(c=>{
-        const okCat = !cat || c.category===cat || (Array.isArray(c.tags)&&c.tags.includes(cat));
-        const okTop = !top || c.topic===top;
+    function applyFilter(){
+      const cat=ui.cat.value, top=ui.top.value;
+      fcCards = fcAll.filter(c=>{
+        const okCat=!cat || c.category===cat || (Array.isArray(c.tags)&&c.tags.includes(cat));
+        const okTop=!top || c.topic===top;
         return okCat && okTop;
       });
-      fcCards = filtered;
-      fcIdx = 0;
-      fcRender();
+      fcIdx=0; renderSlide();
     }
-    async function fcLoad(){
-      document.getElementById('fc-card').textContent='読み込み中...';
-      document.getElementById('fc-img').style.display='none';
-      const limit = Number(document.getElementById('fc-limit').value);
-      const rows = await api.list('all');
-      const picked = rows.slice(0, limit);
-      fcAll = mapQuizzesToCards(picked);
-      if(document.getElementById('fc-shuffle').checked) fcShuffleInPlace(fcAll);
-      fcPopulateFilters(fcAll);
-      fcApplyFilter();
-      fcShowBack = !!document.getElementById('fc-answer-first').checked;
+    function updateBar(){
+      ui.bar.style.width = fcCards.length ? Math.round(((fcIdx+1)/fcCards.length)*100)+'%' : '0%';
     }
-    function fcSlide(changeIdxFn, dir){
-      const card = document.getElementById('fc-card');
-      const img = document.getElementById('fc-img');
+    function adjustImg(){
+      if($('#words').style.display==='none') return;
+      const topToolbar = 200, bottomControls = 150, margin = 24;
+      const avail = Math.max(160, window.innerHeight - topToolbar - bottomControls - margin);
+      ui.sImg.style.maxHeight = avail + 'px';
+    }
+    function renderSlide(){
+      if(!fcCards.length){ ui.sCard.textContent='該当データがありません'; ui.sImg.style.display='none'; updateBar(); return; }
+      const c=fcCards[fcIdx];
+      ui.sCard.textContent = fcShowBack ? (c.back ?? '') : (c.front ?? '');
+      if(c.image_url){
+        ui.sImg.onload=adjustImg; ui.sImg.src=c.image_url; ui.sImg.style.display='block';
+      }else{
+        if(c._img_loading!==true){
+          c._img_loading=true;
+          api.latest(c.id).then(im=>{
+            if(im?.file_path){ c.image_url=`${API_BASE}/${im.file_path}`; renderSlide(); }
+          }).catch(()=>{});
+        }
+        ui.sImg.style.display='none';
+      }
+      updateBar();
+    }
+    function shuffleInPlace(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } }
+    function slide(change, dir){
+      const card=ui.sCard, img=ui.sImg;
       const outClass = dir==='next'?'fc-out-left':'fc-out-right';
       const inClass  = dir==='next'?'fc-in-right':'fc-in-left';
       [card,img].forEach(el=>{ if(el && el.style.display!=='none'){ el.classList.add('fc-anim',outClass);} });
-      function handleOutEnd(){
-        changeIdxFn(); fcShowBack=false; fcRender();
+      function onOut(){
+        change(); fcShowBack=false; renderSlide();
         [card,img].forEach(el=>{
           if(!el || el.style.display==='none') return;
           el.classList.remove(outClass); void el.offsetWidth;
           el.classList.add(inClass);
-          el.addEventListener('animationend', function onInEnd(){ el.classList.remove('fc-anim',inClass); el.removeEventListener('animationend', onInEnd); }, {once:true});
+          el.addEventListener('animationend', function onIn(){ el.classList.remove('fc-anim',inClass); el.removeEventListener('animationend', onIn); }, {once:true});
         });
-        card.removeEventListener('animationend', handleOutEnd);
-        img && img.removeEventListener('animationend', handleOutEnd);
+        card.removeEventListener('animationend', onOut);
+        img && img.removeEventListener('animationend', onOut);
       }
-      card.addEventListener('animationend', handleOutEnd, {once:true});
-      img && img.addEventListener('animationend', handleOutEnd, {once:true});
+      card.addEventListener('animationend', onOut, {once:true});
+      img && img.addEventListener('animationend', onOut, {once:true});
     }
-    function fcInit(){
-      document.getElementById('fc-reload').addEventListener('click', fcLoad);
-      document.getElementById('fc-flip').addEventListener('click', ()=>{ fcShowBack = !fcShowBack; fcRender(); });
-      document.getElementById('fc-next').addEventListener('click', ()=>{ if(fcIdx < fcCards.length-1) fcSlide(()=>{ fcIdx++; }, 'next'); });
-      document.getElementById('fc-prev').addEventListener('click', ()=>{ if(fcIdx > 0)                  fcSlide(()=>{ fcIdx--; }, 'prev');  });
-      document.getElementById('fc-card').addEventListener('click', ()=>{ fcShowBack = !fcShowBack; fcRender(); });
-      window.addEventListener('keydown', (e)=>{
-        if(document.getElementById('flash').style.display==='none') return;
-        if(e.code==='Space'){ e.preventDefault(); fcShowBack=!fcShowBack; fcRender(); }
-        if(e.key==='ArrowRight' && fcIdx < fcCards.length-1) fcSlide(()=>{ fcIdx++; }, 'next');
-        if(e.key==='ArrowLeft'  && fcIdx > 0)                fcSlide(()=>{ fcIdx--; }, 'prev');
-      });
-      // 簡易スワイプ
-      (function addSwipe(){
-        const zone = document.getElementById('fc-card');
-        let x0 = null;
-        zone.addEventListener('touchstart', e=>{ x0 = e.touches[0].clientX; }, {passive:true});
-        zone.addEventListener('touchend', e=>{
-          if(x0==null) return;
-          const dx = e.changedTouches[0].clientX - x0;
-          const TH = 40;
-          if(dx < -TH && fcIdx < fcCards.length-1) fcSlide(()=>{ fcIdx++; }, 'next');
-          if(dx >  TH && fcIdx > 0)                fcSlide(()=>{ fcIdx--; }, 'prev');
-          x0 = null;
-        }, {passive:true});
-      })();
-      window.addEventListener('resize', fcAdjustMedia);
+    async function loadSlide(){
+      ui.sCard.textContent='読み込み中...'; ui.sImg.style.display='none';
+      const limit = Number(ui.sLimit.value);
+      const rows = await api.list('all');
+      fcAll = mapQuizzesToCards(rows).slice(0, limit);
+      if(ui.sShuffle.checked) shuffleInPlace(fcAll);
+      populateFilters(fcAll);
+      applyFilter();
+      fcShowBack = !!ui.sAnsFirst.checked;
     }
+    // 監視
+    ui.sReload.onclick=loadSlide;
+    ui.sFlip.onclick=()=>{ fcShowBack=!fcShowBack; renderSlide(); };
+    ui.sNext.onclick=()=>{ if(fcIdx<fcCards.length-1) slide(()=>{ fcIdx++; }, 'next'); };
+    ui.sPrev.onclick=()=>{ if(fcIdx>0) slide(()=>{ fcIdx--; }, 'prev'); };
+    window.addEventListener('keydown', (e)=>{
+      if($('#words').style.display==='none' || ui.paneSlide.style.display==='none') return;
+      if(e.code==='Space'){ e.preventDefault(); fcShowBack=!fcShowBack; renderSlide(); }
+      if(e.key==='ArrowRight' && fcIdx<fcCards.length-1) slide(()=>{ fcIdx++; }, 'next');
+      if(e.key==='ArrowLeft'  && fcIdx>0)                slide(()=>{ fcIdx--; }, 'prev');
+    });
+    ui.cat.addEventListener('change', ()=>{ applyFilter(); });
+    ui.top.addEventListener('change', ()=>{ applyFilter(); });
+    window.addEventListener('resize', adjustImg);
+
+    // ===== サブモード切替（一覧 / スライド） =====
+    function switchMode(mode){
+      [ui.subList,ui.subSlide].forEach(b=>b.classList.remove('active'));
+      ui.paneList.style.display = mode==='list' ? '' : 'none';
+      ui.paneSlide.style.display = mode==='slide' ? '' : 'none';
+      document.getElementById('list-only').style.display  = mode==='list' ? '' : 'none';
+      document.getElementById('slide-only').style.display = mode==='slide' ? '' : 'none';
+      if(mode==='list'){ ui.subList.classList.add('active'); renderList(); renderStats(); }
+      if(mode==='slide'){ ui.subSlide.classList.add('active'); if(!window.__slide_inited){ window.__slide_inited=true; loadSlide(); } }
+    }
+    ui.subList.onclick = ()=>switchMode('list');
+    ui.subSlide.onclick= ()=>switchMode('slide');
+
+    // 初期表示
+    activate('create');
+    ui.tabWords.addEventListener('click', ()=>switchMode('list'));
   </script>
 </body>
 </html>
