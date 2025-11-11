@@ -47,15 +47,44 @@
     .toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:#111827;color:#fff;padding:10px 14px;border-radius:12px;box-shadow:var(--shadow);opacity:0;pointer-events:none;transition:opacity .2s}
     .toast.show{opacity:0.95}
     .stats{display:flex;gap:16px;align-items:center;flex-wrap:wrap}
-    .kpi{background:#fff;border:1px solid var(--border);border-radius:10px;padding:10px 12px;box-shadow:var(--shadow)}
+    .kpi{background:#fff;border:1px solid --var(--border);border-radius:10px;padding:10px 12px;box-shadow:var(--shadow)}
     .kpi b{font-size:18px;margin-right:4px}
+
+    /* --- Flashcards (slide) --- */
+    .progress{height:8px;background:#eef2f7;border-radius:999px;overflow:hidden;margin:8px 0}
+    .bar{height:100%;width:0%;background:#7aa6ff;transition:width .2s}
+    .fc-wrap{display:flex;flex-direction:column;align-items:center}
+    .fc-card{
+      width:min(780px,96%);
+      min-height:160px;
+      border:1px solid var(--border);
+      border-radius:16px;
+      display:flex;align-items:center;justify-content:center;
+      margin:18px 0; padding:24px; font-size:1.3rem;
+      cursor:pointer; user-select:none; box-shadow:var(--shadow);
+      background:#fff; text-align:center;
+    }
+    #fc-img{
+      display:none; margin-top:8px; max-width:100%; height:auto; object-fit:contain;
+      border-radius:12px; border:1px solid var(--border);
+    }
+    /* Slide animations */
+    @keyframes slideOutLeft  { from { transform: translateX(0); }   to { transform: translateX(-40%); opacity:.2; } }
+    @keyframes slideInRight  { from { transform: translateX(40%); opacity:.2; } to { transform: translateX(0); opacity:1; } }
+    @keyframes slideOutRight { from { transform: translateX(0); }   to { transform: translateX(40%); opacity:.2; } }
+    @keyframes slideInLeft   { from { transform: translateX(-40%); opacity:.2; } to { transform: translateX(0); opacity:1; } }
+    .fc-anim { will-change: transform, opacity; }
+    .fc-out-left  { animation: slideOutLeft .18s ease forwards;  }
+    .fc-in-right  { animation: slideInRight .18s ease forwards;   }
+    .fc-out-right { animation: slideOutRight .18s ease forwards;  }
+    .fc-in-left   { animation: slideInLeft .18s ease forwards;    }
   </style>
 </head>
 <body>
   <header>
     <h1>自己生成クイズ × 画像付き単語帳</h1>
     <div class="lead">
-      ①「クイズ作成」で問題登録 → ②「単語帳」タブで回答練習と画像提示条件の検証。<br/>
+      ①「クイズ作成」で問題登録 → ②「単語帳（一覧）」or「単語帳（スライド）」で練習。<br/>
       <div class="help">
         データはブラウザ単位で分離されます。正誤と画像提示状況が自動で記録されます。
       </div>
@@ -65,7 +94,8 @@
   <div class="container">
     <div class="tabs">
       <button id="tab-create" class="tab active">クイズ作成</button>
-      <button id="tab-list" class="tab">単語帳（回答）</button>
+      <button id="tab-list" class="tab">単語帳（一覧）</button>
+      <button id="tab-flash" class="tab">単語帳（スライド）</button>
     </div>
 
     <!-- 作成 -->
@@ -83,7 +113,7 @@
       </form>
     </section>
 
-    <!-- 一覧 -->
+    <!-- 単語帳（一覧） -->
     <section id="list" class="card">
       <div class="toolbar">
         <div class="stats">
@@ -107,6 +137,43 @@
         </div>
       </div>
       <div id="quizList" class="list"><p class="muted">読み込み中...</p></div>
+    </section>
+
+    <!-- 単語帳（スライド） -->
+    <section id="flash" class="card">
+      <div class="toolbar">
+        <div class="row">
+          <label class="muted">順序</label>
+          <label><input type="checkbox" id="fc-shuffle"> シャッフル</label>
+          <label class="muted">開始</label>
+          <select id="fc-limit">
+            <option value="20">20枚</option>
+            <option value="50" selected>50枚</option>
+            <option value="100">100枚</option>
+          </select>
+          <label><input type="checkbox" id="fc-answer-first"> 先に答えを表示</label>
+        </div>
+        <div class="right row">
+          <select id="fc-category">
+            <option value="">すべての分野</option>
+          </select>
+          <select id="fc-topic">
+            <option value="">すべての項目</option>
+          </select>
+          <button class="ghost" id="fc-reload">読み込み</button>
+        </div>
+      </div>
+      <div class="progress"><div class="bar" id="fc-bar"></div></div>
+      <div class="fc-wrap">
+        <div id="fc-card" class="fc-card">単語帳：右上の「読み込み」を押してください</div>
+        <img id="fc-img" alt="" />
+        <div class="row" style="margin-top:10px">
+          <button id="fc-prev">← 前へ</button>
+          <button id="fc-flip">裏返す</button>
+          <button id="fc-next">次へ →</button>
+        </div>
+        <div class="muted" style="margin-top:6px">Space: 表/裏　←/→: 前後　スワイプ可</div>
+      </div>
     </section>
   </div>
 
@@ -137,8 +204,10 @@
     const ui = {
       tabCreate: el('#tab-create'),
       tabList: el('#tab-list'),
+      tabFlash: el('#tab-flash'),
       secCreate: el('#create'),
       secList: el('#list'),
+      secFlash: el('#flash'),
       form: el('#quizForm'),
       q: el('#question'),
       a: el('#answer'),
@@ -152,6 +221,19 @@
       kAcc: el('#kpi-acc'),
       kAtt: el('#kpi-attempts'),
       kTotal: el('#kpi-total'),
+      // flashcards
+      fcShuffle: el('#fc-shuffle'),
+      fcLimit: el('#fc-limit'),
+      fcAnsFirst: el('#fc-answer-first'),
+      fcReload: el('#fc-reload'),
+      fcBar: el('#fc-bar'),
+      fcCard: el('#fc-card'),
+      fcImg: el('#fc-img'),
+      fcPrev: el('#fc-prev'),
+      fcNext: el('#fc-next'),
+      fcFlip: el('#fc-flip'),
+      fcCat: el('#fc-category'),
+      fcTop: el('#fc-topic'),
     };
 
     const api = {
@@ -252,22 +334,151 @@
     ui.filter.onchange=renderList;
 
     function activate(w){
-      if(w==='create'){
-        ui.tabCreate.classList.add('active');
-        ui.tabList.classList.remove('active');
-        ui.secCreate.classList.add('active');
-        ui.secList.classList.remove('active');
-      }else{
-        ui.tabList.classList.add('active');
-        ui.tabCreate.classList.remove('active');
-        ui.secList.classList.add('active');
-        ui.secCreate.classList.remove('active');
-        renderList(); renderStats();
-      }
+      [ui.tabCreate,ui.tabList,ui.tabFlash].forEach(t=>t.classList.remove('active'));
+      [ui.secCreate,ui.secList,ui.secFlash].forEach(s=>s.classList.remove('active'));
+      if(w==='create'){ ui.tabCreate.classList.add('active'); ui.secCreate.classList.add('active'); }
+      if(w==='list'){ ui.tabList.classList.add('active'); ui.secList.classList.add('active'); renderList(); renderStats(); }
+      if(w==='flash'){ ui.tabFlash.classList.add('active'); ui.secFlash.classList.add('active'); if(!__fc_inited){ __fc_inited=true; fcInit(); } }
     }
     ui.tabCreate.onclick=()=>activate('create');
     ui.tabList.onclick=()=>activate('list');
+    ui.tabFlash.onclick=()=>activate('flash');
     window.addEventListener('DOMContentLoaded',()=>renderStats());
+
+    /* ===== Flashcards (slide) ===== */
+    let __fc_inited = false;
+    let fcAll = [];     // 全件（category/topic含む）
+    let fcCards = [];   // 絞り込み後
+    let fcIdx = 0;
+    let fcShowBack = false;
+
+    function unique(arr){ return [...new Set(arr)].filter(Boolean) }
+    function fcUpdateBar(){
+      if(!fcCards.length){ document.getElementById('fc-bar').style.width='0%'; return; }
+      document.getElementById('fc-bar').style.width = Math.round(((fcIdx+1)/fcCards.length)*100)+'%';
+    }
+    function fcAdjustMedia(){
+      if(document.getElementById('flash').style.display==='none') return;
+      const topToolbar = 180, bottomControls = 150, margin = 24;
+      const avail = Math.max(160, window.innerHeight - topToolbar - bottomControls - margin);
+      document.getElementById('fc-img').style.maxHeight = avail + 'px';
+    }
+    function fcRender(){
+      const $card = document.getElementById('fc-card');
+      const $img  = document.getElementById('fc-img');
+      if(!fcCards.length){
+        $card.textContent='データがありません';
+        $img.style.display='none';
+        fcUpdateBar();
+        return;
+      }
+      const c = fcCards[fcIdx];
+      $card.textContent = fcShowBack ? (c.back ?? '') : (c.front ?? '');
+      if(c.image_url){
+        $img.onload = fcAdjustMedia;
+        $img.src = c.image_url;
+        $img.style.display = 'block';
+      }else{
+        if(c._img_loading!==true){
+          c._img_loading = true;
+          api.latest(c.id).then(im=>{
+            if(im?.file_path){ c.image_url = `${API_BASE}/${im.file_path}`; fcRender(); }
+          }).catch(()=>{});
+        }
+        $img.style.display='none';
+      }
+      fcUpdateBar();
+    }
+    function fcShuffleInPlace(arr){ for(let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]]; } }
+    function mapQuizzesToCards(quizzes){
+      return quizzes.map(q=>({
+        id:q.id, front:q.question, back:q.answer,
+        category: q.category ?? q.tag ?? null,
+        topic: q.topic ?? q.subtag ?? null,
+        tags: q.tags ?? null,
+        image_url: null
+      }));
+    }
+    function fcPopulateFilters(cards){
+      const cats = unique(cards.flatMap(c=>[c.category, ...(Array.isArray(c.tags)?c.tags:[])]));
+      const tops = unique(cards.map(c=>c.topic));
+      document.getElementById('fc-category').innerHTML =
+        '<option value="">すべての分野</option>' + cats.map(v=>`<option value="${v}">${v}</option>`).join('');
+      document.getElementById('fc-topic').innerHTML =
+        '<option value="">すべての項目</option>' + tops.map(v=>`<option value="${v}">${v}</option>`).join('');
+    }
+    function fcApplyFilter(){
+      const cat = document.getElementById('fc-category').value;
+      const top = document.getElementById('fc-topic').value;
+      const filtered = fcAll.filter(c=>{
+        const okCat = !cat || c.category===cat || (Array.isArray(c.tags)&&c.tags.includes(cat));
+        const okTop = !top || c.topic===top;
+        return okCat && okTop;
+      });
+      fcCards = filtered;
+      fcIdx = 0;
+      fcRender();
+    }
+    async function fcLoad(){
+      document.getElementById('fc-card').textContent='読み込み中...';
+      document.getElementById('fc-img').style.display='none';
+      const limit = Number(document.getElementById('fc-limit').value);
+      const rows = await api.list('all');
+      const picked = rows.slice(0, limit);
+      fcAll = mapQuizzesToCards(picked);
+      if(document.getElementById('fc-shuffle').checked) fcShuffleInPlace(fcAll);
+      fcPopulateFilters(fcAll);
+      fcApplyFilter();
+      fcShowBack = !!document.getElementById('fc-answer-first').checked;
+    }
+    function fcSlide(changeIdxFn, dir){
+      const card = document.getElementById('fc-card');
+      const img = document.getElementById('fc-img');
+      const outClass = dir==='next'?'fc-out-left':'fc-out-right';
+      const inClass  = dir==='next'?'fc-in-right':'fc-in-left';
+      [card,img].forEach(el=>{ if(el && el.style.display!=='none'){ el.classList.add('fc-anim',outClass);} });
+      function handleOutEnd(){
+        changeIdxFn(); fcShowBack=false; fcRender();
+        [card,img].forEach(el=>{
+          if(!el || el.style.display==='none') return;
+          el.classList.remove(outClass); void el.offsetWidth;
+          el.classList.add(inClass);
+          el.addEventListener('animationend', function onInEnd(){ el.classList.remove('fc-anim',inClass); el.removeEventListener('animationend', onInEnd); }, {once:true});
+        });
+        card.removeEventListener('animationend', handleOutEnd);
+        img && img.removeEventListener('animationend', handleOutEnd);
+      }
+      card.addEventListener('animationend', handleOutEnd, {once:true});
+      img && img.addEventListener('animationend', handleOutEnd, {once:true});
+    }
+    function fcInit(){
+      document.getElementById('fc-reload').addEventListener('click', fcLoad);
+      document.getElementById('fc-flip').addEventListener('click', ()=>{ fcShowBack = !fcShowBack; fcRender(); });
+      document.getElementById('fc-next').addEventListener('click', ()=>{ if(fcIdx < fcCards.length-1) fcSlide(()=>{ fcIdx++; }, 'next'); });
+      document.getElementById('fc-prev').addEventListener('click', ()=>{ if(fcIdx > 0)                  fcSlide(()=>{ fcIdx--; }, 'prev');  });
+      document.getElementById('fc-card').addEventListener('click', ()=>{ fcShowBack = !fcShowBack; fcRender(); });
+      window.addEventListener('keydown', (e)=>{
+        if(document.getElementById('flash').style.display==='none') return;
+        if(e.code==='Space'){ e.preventDefault(); fcShowBack=!fcShowBack; fcRender(); }
+        if(e.key==='ArrowRight' && fcIdx < fcCards.length-1) fcSlide(()=>{ fcIdx++; }, 'next');
+        if(e.key==='ArrowLeft'  && fcIdx > 0)                fcSlide(()=>{ fcIdx--; }, 'prev');
+      });
+      // 簡易スワイプ
+      (function addSwipe(){
+        const zone = document.getElementById('fc-card');
+        let x0 = null;
+        zone.addEventListener('touchstart', e=>{ x0 = e.touches[0].clientX; }, {passive:true});
+        zone.addEventListener('touchend', e=>{
+          if(x0==null) return;
+          const dx = e.changedTouches[0].clientX - x0;
+          const TH = 40;
+          if(dx < -TH && fcIdx < fcCards.length-1) fcSlide(()=>{ fcIdx++; }, 'next');
+          if(dx >  TH && fcIdx > 0)                fcSlide(()=>{ fcIdx--; }, 'prev');
+          x0 = null;
+        }, {passive:true});
+      })();
+      window.addEventListener('resize', fcAdjustMedia);
+    }
   </script>
 </body>
 </html>
