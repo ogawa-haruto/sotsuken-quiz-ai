@@ -208,11 +208,18 @@
     .quiz-item {
       border-radius: 12px;
       border: 1px solid var(--border);
-      padding: 12px;
-      background: white;
+      padding: 10px 10px 12px;
+      background: #fff;
       display: flex;
       flex-direction: column;
       gap: 6px;
+    }
+
+    .quiz-header {
+      display:flex;
+      justify-content:space-between;
+      gap:8px;
+      align-items:flex-start;
     }
 
     .quiz-question {
@@ -220,24 +227,67 @@
       font-size: 14px;
     }
 
-    .quiz-answer {
-      font-size: 13px;
-      color: var(--text-sub);
+    .quiz-buttons {
+      display:flex;
+      gap:6px;
+      flex-wrap:wrap;
+      justify-content:flex-end;
     }
 
     .quiz-meta {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 11px;
-      color: var(--text-sub);
-      gap: 8px;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      font-size:11px;
+      color:var(--text-sub);
+      gap:8px;
     }
 
     .quiz-tags {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 4px;
+      display:flex;
+      flex-wrap:wrap;
+      gap:4px;
+    }
+
+    .quiz-image {
+      margin-top:6px;
+    }
+
+    .quiz-image img {
+      max-width:100%;
+      max-height:200px;
+      border-radius:10px;
+      display:block;
+      object-fit:contain;
+      background:#f3f4f8;
+    }
+
+    .answer-row {
+      display:flex;
+      gap:6px;
+      margin-top:4px;
+      align-items:center;
+    }
+
+    .answer-row input {
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+
+    .judge-label {
+      min-width:60px;
+      font-size:12px;
+      text-align:right;
+    }
+
+    .judge-ok {
+      color:#0d9488;
+      font-weight:600;
+    }
+
+    .judge-ng {
+      color:#b91c1c;
+      font-weight:600;
     }
 
     .divider {
@@ -272,23 +322,11 @@
       margin-top: 8px;
     }
 
-    .slide-image-wrapper {
-      margin: 10px auto 0;
-      max-width: 100%;
-      max-height: 260px;
-      border-radius: 12px;
-      overflow: hidden;
-      background: #f3f4f8;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .slide-image-wrapper img {
-      max-width: 100%;
-      max-height: 260px;
-      object-fit: contain;
-      display: block;
+    .slide-index {
+      font-size: 12px;
+      color: var(--text-sub);
+      text-align: center;
+      margin-top: 8px;
     }
 
     .slide-controls {
@@ -297,13 +335,6 @@
       justify-content: space-between;
       flex-wrap: wrap;
       gap: 8px;
-    }
-
-    .slide-index {
-      font-size: 12px;
-      color: var(--text-sub);
-      text-align: center;
-      margin-top: 8px;
     }
 
     .toast {
@@ -355,7 +386,7 @@
   <section id="panel-create" class="panel active">
     <div class="card">
       <h2 style="margin-top:0;font-size:15px;">クイズ作成</h2>
-      <p class="muted">問題文と答えを入力して「クイズを保存」を押すと、単語帳タブに追加されます。</p>
+      <p class="muted">問題文と答えを入力して「クイズを保存」。必要なら画像生成用プロンプトも追加できます。</p>
 
       <div style="margin-top:8px;">
         <label for="q-question">問題文</label>
@@ -378,11 +409,11 @@
     </div>
   </section>
 
-  <!-- 単語帳（一覧） -->
+  <!-- 単語帳（一覧） 暗記カードモード -->
   <section id="panel-list" class="panel">
     <div class="card">
       <div class="row">
-        <label>フィルタ</label>
+        <label>対象</label>
         <select id="list-status">
           <option value="all">すべて</option>
           <option value="only_unanswered">未回答のみ</option>
@@ -390,10 +421,10 @@
         </select>
         <button class="secondary" id="btn-reload-list">再読み込み</button>
       </div>
-      <div class="row">
-        <label for="list-search">検索</label>
-        <input id="list-search" type="text" placeholder="問題文で部分一致検索">
-      </div>
+      <p class="muted" style="margin-top:4px;">
+        問題だけを見て答えを入力し、「判定」で正誤を記録します。<br>
+        画像は任意で生成・再生成できます。
+      </p>
       <div class="divider"></div>
       <div id="quiz-list" class="quiz-list"></div>
       <p class="muted" id="list-empty" style="display:none;margin-top:8px;">クイズがまだ登録されていません。</p>
@@ -416,9 +447,6 @@
       <div class="slide-container">
         <div id="slide-card" class="slide-card" style="display:none;">
           <div class="slide-question" id="slide-question"></div>
-          <div class="slide-image-wrapper" id="slide-image-wrapper" style="display:none;">
-            <img id="slide-image" alt="生成画像">
-          </div>
           <div class="slide-answer" id="slide-answer" style="display:none;"></div>
         </div>
         <p class="muted" id="slide-empty">クイズが読み込まれていません。</p>
@@ -454,7 +482,6 @@
     const el = document.getElementById("toast");
     el.textContent = message;
     el.classList.remove("show");
-    // 強制リフロー
     void el.offsetWidth;
     el.classList.add("show");
   }
@@ -464,7 +491,6 @@
     opts.headers = Object.assign({}, opts.headers, {
       "X-Token": TOKEN
     });
-    // JSONボディなら Content-Type を付与
     if (opts.body && !opts.headers["Content-Type"]) {
       opts.headers["Content-Type"] = "application/json";
     }
@@ -527,7 +553,10 @@
 
       if (generateImage) {
         try {
-          await apiFetch(`/quiz/${quiz.id}/image/regen`, { method: "POST" });
+          await apiFetch(`/quiz/${quiz.id}/image/regen`, {
+            method: "POST",
+            body: JSON.stringify({ prompt: prompt || null })
+          });
           showToast("クイズと画像を保存しました。");
         } catch (e) {
           console.error(e);
@@ -535,7 +564,6 @@
         }
       }
 
-      // 一覧・スライドを自動更新
       await loadQuizList();
       await loadSlideData();
 
@@ -548,86 +576,222 @@
   btnSave.addEventListener("click", () => createQuiz({ generateImage: false }));
   btnSaveGen.addEventListener("click", () => createQuiz({ generateImage: true }));
 
-  // ===== 単語帳（一覧） =====
+  // ===== 単語帳（一覧） 暗記カードモード =====
   const listStatus = document.getElementById("list-status");
-  const listSearch = document.getElementById("list-search");
   const btnReloadList = document.getElementById("btn-reload-list");
   const listContainer = document.getElementById("quiz-list");
   const listEmpty = document.getElementById("list-empty");
 
-  let listCache = [];
-
-  function renderQuizList() {
-    const q = listSearch.value.trim();
-    const filtered = listCache.filter(item =>
-      !q || (item.question && item.question.includes(q))
-    );
-
-    listContainer.innerHTML = "";
-    if (filtered.length === 0) {
-      listEmpty.style.display = "block";
-      return;
-    }
-    listEmpty.style.display = "none";
-
-    for (const quiz of filtered) {
-      const div = document.createElement("div");
-      div.className = "quiz-item";
-
-      const qEl = document.createElement("div");
-      qEl.className = "quiz-question";
-      qEl.textContent = quiz.question;
-      div.appendChild(qEl);
-
-      const aEl = document.createElement("div");
-      aEl.className = "quiz-answer";
-      aEl.textContent = quiz.answer;
-      div.appendChild(aEl);
-
-      const meta = document.createElement("div");
-      meta.className = "quiz-meta";
-
-      const left = document.createElement("div");
-      left.textContent = `ID: ${quiz.id}`;
-
-      const tags = document.createElement("div");
-      tags.className = "quiz-tags";
-
-      const tagStatus = document.createElement("span");
-      tagStatus.className = "pill";
-      let statusText = "未回答";
-      if (quiz.last_correct === true) statusText = "直近正解";
-      else if (quiz.last_correct === false) statusText = "直近不正解";
-      tagStatus.textContent = statusText;
-      tags.appendChild(tagStatus);
-
-      const tagCount = document.createElement("span");
-      tagCount.className = "pill";
-      tagCount.textContent = `解答回数: ${quiz.attempts ?? 0}`;
-      tags.appendChild(tagCount);
-
-      meta.appendChild(left);
-      meta.appendChild(tags);
-
-      div.appendChild(meta);
-      listContainer.appendChild(div);
-    }
-  }
+  let listItems = [];
 
   async function loadQuizList() {
     try {
       const status = listStatus.value || "all";
-      const res = await apiFetch(`/quiz/list?order=created_desc&status=${encodeURIComponent(status)}&offset=0&limit=200`);
-      listCache = res || [];
-      renderQuizList();
+      const rows = await apiFetch(`/quiz/list?status=${encodeURIComponent(status)}`);
+      listItems = rows || [];
+      await renderQuizList();
     } catch (e) {
       console.error(e);
       showToast("クイズ一覧の取得に失敗しました。");
     }
   }
 
+  async function renderQuizList() {
+    listContainer.innerHTML = "";
+    if (!listItems || listItems.length === 0) {
+      listEmpty.style.display = "block";
+      return;
+    }
+    listEmpty.style.display = "none";
+
+    for (const q of listItems) {
+      const item = document.createElement("div");
+      item.className = "quiz-item";
+      item.dataset.id = q.id;
+
+      const header = document.createElement("div");
+      header.className = "quiz-header";
+
+      const left = document.createElement("div");
+      const qTitle = document.createElement("div");
+      qTitle.className = "quiz-question";
+      qTitle.textContent = `#${q.id} ${q.question || ""}`;
+      left.appendChild(qTitle);
+
+      const metaRow = document.createElement("div");
+      metaRow.className = "quiz-meta";
+
+      const tags = document.createElement("div");
+      tags.className = "quiz-tags";
+
+      const s1 = document.createElement("span");
+      s1.className = "pill";
+      let stText = "未回答";
+      if (q.last_correct === true) stText = "直近正解";
+      else if (q.last_correct === false) stText = "直近不正解";
+      s1.textContent = stText;
+      tags.appendChild(s1);
+
+      const s2 = document.createElement("span");
+      s2.className = "pill";
+      s2.textContent = `解答回数: ${q.attempts ?? 0}`;
+      tags.appendChild(s2);
+
+      metaRow.appendChild(tags);
+      left.appendChild(metaRow);
+
+      const btns = document.createElement("div");
+      btns.className = "quiz-buttons";
+
+      const regenBtn = document.createElement("button");
+      regenBtn.className = "secondary";
+      regenBtn.textContent = "画像生成 / 再生成";
+      regenBtn.setAttribute("data-action", "regen");
+      regenBtn.setAttribute("data-id", q.id);
+      btns.appendChild(regenBtn);
+
+      const delBtn = document.createElement("button");
+      delBtn.className = "danger";
+      delBtn.textContent = "削除";
+      delBtn.setAttribute("data-action", "delete");
+      delBtn.setAttribute("data-id", q.id);
+      btns.appendChild(delBtn);
+
+      header.appendChild(left);
+      header.appendChild(btns);
+      item.appendChild(header);
+
+      // 画像用プロンプト入力
+      const imgRow = document.createElement("div");
+      imgRow.className = "row";
+      const imgInput = document.createElement("input");
+      imgInput.type = "text";
+      imgInput.placeholder = "画像プロンプトを追加（任意）";
+      imgInput.setAttribute("data-img-prompt", q.id);
+      imgRow.appendChild(imgInput);
+      item.appendChild(imgRow);
+
+      // 解答入力＋判定
+      const ansRow = document.createElement("div");
+      ansRow.className = "answer-row";
+
+      const ansInput = document.createElement("input");
+      ansInput.type = "text";
+      ansInput.placeholder = "ここに答えを入力";
+      ansInput.setAttribute("data-answer-input", q.id);
+      ansRow.appendChild(ansInput);
+
+      const checkBtn = document.createElement("button");
+      checkBtn.className = "secondary";
+      checkBtn.textContent = "判定";
+      checkBtn.setAttribute("data-action", "check");
+      checkBtn.setAttribute("data-id", q.id);
+      ansRow.appendChild(checkBtn);
+
+      const judge = document.createElement("span");
+      judge.className = "judge-label muted";
+      judge.setAttribute("data-result", q.id);
+      judge.textContent = "";
+      ansRow.appendChild(judge);
+
+      item.appendChild(ansRow);
+
+      // 画像サムネイル表示エリア
+      const imgBox = document.createElement("div");
+      imgBox.className = "quiz-image";
+      imgBox.setAttribute("data-img-slot", q.id);
+      item.appendChild(imgBox);
+
+      listContainer.appendChild(item);
+
+      // 画像があれば最新を取得して表示
+      try {
+        const imgInfo = await apiFetch(`/quiz/${q.id}/image/latest`);
+        if (imgInfo && imgInfo.url) {
+          const img = document.createElement("img");
+          img.src = imgInfo.url;
+          imgBox.appendChild(img);
+        }
+      } catch (e) {
+        // 画像が無い場合などは無視
+      }
+    }
+  }
+
   btnReloadList.addEventListener("click", loadQuizList);
-  listSearch.addEventListener("input", () => renderQuizList());
+
+  // 一覧でのボタン操作（イベント委譲）
+  listContainer.addEventListener("click", async (ev) => {
+    const btn = ev.target.closest("button[data-action]");
+    if (!btn) return;
+    const action = btn.getAttribute("data-action");
+    const id = btn.getAttribute("data-id");
+    if (!id) return;
+
+    if (action === "delete") {
+      if (!confirm(`クイズ #${id} を削除しますか？（画像も含めて削除されます）`)) return;
+      try {
+        await apiFetch(`/quiz/${id}`, { method: "DELETE" });
+        showToast(`クイズ #${id} を削除しました。`);
+        await loadQuizList();
+        await loadSlideData();
+      } catch (e) {
+        console.error(e);
+        showToast("削除に失敗しました。");
+      }
+    }
+
+    if (action === "regen") {
+      const promptInput = document.querySelector(`[data-img-prompt="${id}"]`);
+      const extra = promptInput ? promptInput.value.trim() : "";
+      try {
+        await apiFetch(`/quiz/${id}/image/regen`, {
+          method: "POST",
+          body: JSON.stringify({ prompt: extra || null })
+        });
+        showToast(`クイズ #${id} の画像を生成 / 再生成しました。`);
+        await loadQuizList(); // 最新サムネイルを反映
+      } catch (e) {
+        console.error(e);
+        showToast("画像生成に失敗しました。");
+      }
+    }
+
+    if (action === "check") {
+      const ansInput = document.querySelector(`[data-answer-input="${id}"]`);
+      const label = document.querySelector(`[data-result="${id}"]`);
+      if (!ansInput || !label) return;
+      const ans = ansInput.value.trim();
+      if (!ans) {
+        showToast("答えを入力してください。");
+        return;
+      }
+      // 画像が出ているかどうか
+      const imgSlot = document.querySelector(`[data-img-slot="${id}"]`);
+      const hasImage = !!(imgSlot && imgSlot.querySelector("img"));
+
+      try {
+        const res = await apiFetch(`/quiz/${id}/answer`, {
+          method: "POST",
+          body: JSON.stringify({
+            answer: ans,
+            image_shown: hasImage
+          })
+        });
+        const correct = !!res.correct;
+        label.textContent = correct ? "正解" : "不正解";
+        label.classList.remove("judge-ok", "judge-ng", "muted");
+        label.classList.add(correct ? "judge-ok" : "judge-ng");
+        await loadQuizList(); // ステータス更新のため
+      } catch (e) {
+        console.error(e);
+        label.textContent = "エラー";
+        label.classList.remove("judge-ok", "judge-ng");
+        label.classList.add("muted");
+        showToast("判定記録に失敗しました。");
+      }
+    }
+  });
 
   // ===== 単語帳（スライド） =====
   const slideStatusSel = document.getElementById("slide-status");
@@ -635,8 +799,6 @@
   const slideCard = document.getElementById("slide-card");
   const slideQuestion = document.getElementById("slide-question");
   const slideAnswer = document.getElementById("slide-answer");
-  const slideImageWrapper = document.getElementById("slide-image-wrapper");
-  const slideImage = document.getElementById("slide-image");
   const slideEmpty = document.getElementById("slide-empty");
   const slideIndex = document.getElementById("slide-index");
   const btnPrev = document.getElementById("btn-prev");
@@ -646,6 +808,20 @@
   let slideData = [];
   let slidePos = 0;
   let slideShowAnswer = false;
+
+  async function loadSlideData() {
+    try {
+      const status = slideStatusSel.value || "all";
+      const rows = await apiFetch(`/quiz/list?status=${encodeURIComponent(status)}`);
+      slideData = rows || [];
+      slidePos = 0;
+      slideShowAnswer = false;
+      renderSlide();
+    } catch (e) {
+      console.error(e);
+      showToast("スライド用データの取得に失敗しました。");
+    }
+  }
 
   function renderSlide() {
     if (!slideData || slideData.length === 0) {
@@ -662,29 +838,7 @@
     slideAnswer.textContent = item.answer || "";
     slideAnswer.style.display = slideShowAnswer ? "block" : "none";
 
-    if (item.image_url) {
-      slideImageWrapper.style.display = "flex";
-      slideImage.src = item.image_url;
-    } else {
-      slideImageWrapper.style.display = "none";
-      slideImage.removeAttribute("src");
-    }
-
     slideIndex.textContent = `${slidePos + 1} / ${slideData.length}`;
-  }
-
-  async function loadSlideData() {
-    try {
-      const status = slideStatusSel.value || "all";
-      const res = await apiFetch(`/quiz/list?order=created_desc&status=${encodeURIComponent(status)}&offset=0&limit=200`);
-      slideData = res || [];
-      slidePos = 0;
-      slideShowAnswer = false;
-      renderSlide();
-    } catch (e) {
-      console.error(e);
-      showToast("スライド用データの取得に失敗しました。");
-    }
   }
 
   btnReloadSlide.addEventListener("click", loadSlideData);
@@ -711,7 +865,6 @@
   // ===== 初期ロード =====
   loadQuizList();
   loadSlideData();
-
 </script>
 </body>
 </html>
