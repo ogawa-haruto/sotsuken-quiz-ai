@@ -1,484 +1,717 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>自己生成クイズ × 単語帳（一覧＋スライド統合）</title>
+  <meta charset="UTF-8">
+  <title>卒研クイズアプリ</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
-    :root{
-      --bg:#f6f9fc; --card:#ffffff; --border:#e5e7eb;
-      --text:#0f172a; --muted:#64748b; --brand:#0ea5e9;
-      --danger:#ef4444; --ok:#10b981; --shadow:0 6px 20px rgba(2,8,23,.06);
-      --radius:12px;
+    :root {
+      --primary: #0d8cf0;
+      --primary-light: #e6f3ff;
+      --bg: #f7f9fc;
+      --border: #d3d7e3;
+      --text-main: #222;
+      --text-sub: #555;
+      --danger: #e5534b;
     }
-    *{box-sizing:border-box}
-    body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans JP",Meiryo,sans-serif}
-    header{max-width:1000px;margin:20px auto 8px;padding:0 16px}
-    h1{font-size:22px;margin:0 0 8px}
-    .lead{color:var(--muted);font-size:14px;line-height:1.6}
-    .container{max-width:1000px;margin:8px auto 24px;padding:0 16px}
-    .tabs{display:flex;gap:8px;margin:8px 0 12px}
-    .tab{flex:1;border:1px solid var(--border);background:#e7eef7;color:#0b1324;border-radius:10px;padding:10px;cursor:pointer;text-align:center}
-    .tab.active{background:var(--brand);color:#fff;border-color:var(--brand)}
-    section.card{display:none;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px}
-    section.card.active{display:block}
-    label{display:block;margin:10px 0 6px}
-    textarea,input[type=text]{width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:10px;background:#fff}
-    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-    button{padding:9px 12px;border-radius:10px;border:1px solid #3b82f6;background:var(--brand);color:#fff;cursor:pointer}
-    button.secondary{background:#fff;color:#0f172a;border:1px solid #94a3b8}
-    button.ghost{background:#fff;color:var(--brand);border:1px solid var(--brand)}
-    button.warn{background:var(--danger);border-color:#dc2626}
-    .muted{color:var(--muted)}
-    .toolbar{display:flex;gap:10px;align-items:center;margin-bottom:8px;flex-wrap:wrap}
-    .toolbar .right{margin-left:auto}
 
-    /* 単語帳のモード切替ボタン */
-    .subtabs{display:flex;gap:10px;margin-bottom:8px}
-    .subbtn{flex:1;padding:10px;border-radius:16px;border:1px solid var(--border);background:#edf2f7;color:#0b1324;cursor:pointer}
-    .subbtn.active{background:#0ea5e9;color:#fff;border-color:#0ea5e9}
+    * { box-sizing: border-box; }
 
-    .list{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:12px}
-    .item{border:1px solid var(--border);border-radius:12px;padding:12px;background:#fff}
-    .thumb{width:100%;max-height:220px;object-fit:cover;border-radius:10px;border:1px solid var(--border);margin-top:8px}
-
-    .ansbox{display:flex;gap:8px;align-items:center;margin-top:6px}
-    .ansbox input{flex:1}
-    .judge{font-weight:600}
-    .ok{color:var(--ok)}
-    .ng{color:var(--danger)}
-
-    .toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:#111827;color:#fff;padding:10px 14px;border-radius:12px;box-shadow:var(--shadow);opacity:0;pointer-events:none;transition:opacity .2s}
-    .toast.show{opacity:0.95}
-    .stats{display:flex;gap:16px;align-items:center;flex-wrap:wrap}
-    .kpi{background:#fff;border:1px solid var(--border);border-radius:10px;padding:10px 12px;box-shadow:var(--shadow)}
-    .kpi b{font-size:18px;margin-right:4px}
-
-    /* --- Flashcards (slide) --- */
-    .progress{height:8px;background:#eef2f7;border-radius:999px;overflow:hidden;margin:8px 0}
-    .bar{height:100%;width:0%;background:#7aa6ff;transition:width .2s}
-    .fc-wrap{display:flex;flex-direction:column;align-items:center}
-    .fc-card{
-      width:min(780px,96%);
-      min-height:160px;
-      border:1px solid var(--border);
-      border-radius:16px;
-      display:flex;align-items:center;justify-content:center;
-      margin:18px 0; padding:24px; font-size:1.3rem;
-      cursor:pointer; user-select:none; box-shadow:var(--shadow);
-      background:#fff; text-align:center;
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text-main);
     }
-    #fc-img{
-      display:none; margin-top:8px; max-width:100%; height:auto; object-fit:contain;
-      border-radius:12px; border:1px solid var(--border);
+
+    header {
+      background: white;
+      border-bottom: 1px solid var(--border);
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 10;
     }
-    @keyframes slideOutLeft  { from { transform: translateX(0); }   to { transform: translateX(-40%); opacity:.2; } }
-    @keyframes slideInRight  { from { transform: translateX(40%); opacity:.2; } to { transform: translateX(0); opacity:1; } }
-    @keyframes slideOutRight { from { transform: translateX(0); }   to { transform: translateX(40%); opacity:.2; } }
-    @keyframes slideInLeft   { from { transform: translateX(-40%); opacity:.2; } to { transform: translateX(0); opacity:1; } }
-    .fc-anim { will-change: transform, opacity; }
-    .fc-out-left  { animation: slideOutLeft .18s ease forwards;  }
-    .fc-in-right  { animation: slideInRight .18s ease forwards;   }
-    .fc-out-right { animation: slideOutRight .18s ease forwards;  }
-    .fc-in-left   { animation: slideInLeft .18s ease forwards;    }
+
+    header h1 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    .token-indicator {
+      font-size: 11px;
+      color: var(--text-sub);
+      opacity: 0.8;
+    }
+
+    main {
+      max-width: 960px;
+      margin: 16px auto 32px;
+      padding: 0 12px;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+      overflow-x: auto;
+    }
+
+    .tab {
+      flex: 1;
+      min-width: 0;
+      padding: 10px 12px;
+      text-align: center;
+      border-radius: 999px;
+      border: 1px solid transparent;
+      background: #e9edf5;
+      color: var(--text-sub);
+      font-size: 13px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background .15s, color .15s, border-color .15s;
+    }
+
+    .tab.active {
+      background: var(--primary);
+      color: #fff;
+      border-color: var(--primary);
+    }
+
+    section.panel {
+      display: none;
+    }
+
+    section.panel.active {
+      display: block;
+    }
+
+    .card {
+      background: white;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      padding: 16px;
+      box-shadow: 0 8px 24px rgba(15, 35, 95, 0.04);
+    }
+
+    .card + .card {
+      margin-top: 12px;
+    }
+
+    label {
+      font-size: 13px;
+      font-weight: 600;
+      display: block;
+      margin-bottom: 4px;
+      color: var(--text-sub);
+    }
+
+    input[type="text"], textarea, select {
+      width: 100%;
+      padding: 8px 10px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      font-size: 14px;
+      resize: vertical;
+      min-height: 36px;
+    }
+
+    textarea {
+      min-height: 72px;
+    }
+
+    button {
+      border-radius: 999px;
+      border: none;
+      font-size: 14px;
+      padding: 8px 16px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: background .15s, box-shadow .15s, transform .05s;
+    }
+
+    button.primary {
+      background: var(--primary);
+      color: white;
+      box-shadow: 0 4px 12px rgba(13, 140, 240, 0.35);
+    }
+
+    button.secondary {
+      background: var(--primary-light);
+      color: var(--text-main);
+    }
+
+    button.danger {
+      background: #ffe7e5;
+      color: #b02020;
+    }
+
+    button:active {
+      transform: translateY(1px);
+      box-shadow: none;
+    }
+
+    .button-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+
+    .row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+      margin: 6px 0;
+    }
+
+    .row > * {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .row label {
+      margin: 0;
+      min-width: 60px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: var(--primary-light);
+      color: var(--text-sub);
+      font-size: 11px;
+    }
+
+    .muted {
+      font-size: 12px;
+      color: var(--text-sub);
+    }
+
+    .quiz-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .quiz-item {
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      padding: 12px;
+      background: white;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .quiz-question {
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    .quiz-answer {
+      font-size: 13px;
+      color: var(--text-sub);
+    }
+
+    .quiz-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      color: var(--text-sub);
+      gap: 8px;
+    }
+
+    .quiz-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+    }
+
+    .divider {
+      border-top: 1px dashed var(--border);
+      margin: 12px 0;
+    }
+
+    .slide-container {
+      margin-top: 12px;
+      position: relative;
+      min-height: 160px;
+    }
+
+    .slide-card {
+      background: white;
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      padding: 16px;
+      text-align: center;
+      box-shadow: 0 10px 28px rgba(15, 35, 95, 0.08);
+    }
+
+    .slide-question {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+
+    .slide-answer {
+      font-size: 16px;
+      color: var(--text-sub);
+      margin-top: 8px;
+    }
+
+    .slide-image-wrapper {
+      margin: 10px auto 0;
+      max-width: 100%;
+      max-height: 260px;
+      border-radius: 12px;
+      overflow: hidden;
+      background: #f3f4f8;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .slide-image-wrapper img {
+      max-width: 100%;
+      max-height: 260px;
+      object-fit: contain;
+      display: block;
+    }
+
+    .slide-controls {
+      margin-top: 12px;
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .slide-index {
+      font-size: 12px;
+      color: var(--text-sub);
+      text-align: center;
+      margin-top: 8px;
+    }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 20px;
+      transform: translateX(-50%);
+      background: rgba(25, 40, 85, 0.98);
+      color: white;
+      padding: 10px 14px;
+      border-radius: 999px;
+      font-size: 12px;
+      display: none;
+      z-index: 50;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, .3);
+      max-width: 90%;
+      text-align: center;
+    }
+
+    .toast.show {
+      display: block;
+      animation: fadein .2s ease-out, fadeout .2s ease-in 3s forwards;
+    }
+
+    @keyframes fadein {
+      from { opacity: 0; transform: translate(-50%, 10px); }
+      to   { opacity: 1; transform: translate(-50%, 0); }
+    }
+
+    @keyframes fadeout {
+      to { opacity: 0; transform: translate(-50%, 10px); }
+    }
   </style>
 </head>
 <body>
-  <header>
-    <h1>自己生成クイズ × 単語帳（一覧＋スライド統合）</h1>
-    <div class="lead">作成 → 単語帳。単語帳の中で「一覧 / スライド」を切り替えられます。</div>
-  </header>
+<header>
+  <h1>卒研クイズ・単語帳システム</h1>
+  <div class="token-indicator" id="tokenIndicator"></div>
+</header>
 
-  <div class="container">
-    <div class="tabs">
-      <button id="tab-create" class="tab active">クイズ作成</button>
-      <button id="tab-words" class="tab">単語帳</button>
-    </div>
-
-    <!-- 作成 -->
-    <section id="create" class="card active">
-      <form id="quizForm">
-        <label>問題文</label>
-        <textarea id="question" rows="2" placeholder="例）apple の日本語は？" required></textarea>
-        <label>答え</label>
-        <input id="answer" type="text" placeholder="例）りんご" required />
-        <div class="row" style="margin-top:8px">
-          <button type="submit">作成</button>
-          <button class="secondary" type="button" id="goWords">単語帳へ</button>
-          <span id="saveMsg" class="muted"></span>
-        </div>
-      </form>
-    </section>
-
-    <!-- 単語帳（一覧＋スライド 統合） -->
-    <section id="words" class="card">
-      <div class="subtabs">
-        <button id="mode-list"  class="subbtn active">単語帳（一覧）</button>
-        <button id="mode-slide" class="subbtn">単語帳（スライド）</button>
-      </div>
-
-      <!-- 共通ツールバー（分野/項目はどちらのモードでも使用） -->
-      <div class="toolbar">
-        <div class="row">
-          <select id="fc-category">
-            <option value="">すべての分野</option>
-          </select>
-          <select id="fc-topic">
-            <option value="">すべての項目</option>
-          </select>
-        </div>
-        <div class="right row">
-          <!-- 一覧モード専用 -->
-          <div id="list-only" class="row">
-            <label class="muted">画像</label>
-            <select id="imgMode">
-              <option value="on" selected>表示する</option>
-              <option value="off">表示しない</option>
-            </select>
-            <label class="muted">フィルタ</label>
-            <select id="filterMode">
-              <option value="all" selected>すべて</option>
-              <option value="incorrect_only">未正解のみ</option>
-              <option value="unanswered_only">未回答のみ</option>
-            </select>
-            <button class="ghost" id="reloadBtn">再読み込み</button>
-          </div>
-
-          <!-- スライド専用 -->
-          <div id="slide-only" class="row" style="display:none">
-            <label class="muted">順序</label>
-            <label><input type="checkbox" id="fc-shuffle"> シャッフル</label>
-            <label class="muted">開始</label>
-            <select id="fc-limit">
-              <option value="20">20枚</option>
-              <option value="50" selected>50枚</option>
-              <option value="100">100枚</option>
-            </select>
-            <label><input type="checkbox" id="fc-answer-first"> 先に答えを表示</label>
-            <button class="ghost" id="fc-reload">読み込み</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- 一覧モード本体 -->
-      <div id="pane-list">
-        <div class="stats" style="margin-bottom:8px">
-          <div class="kpi"><b id="kpi-acc">0%</b>正解率</div>
-          <div class="kpi"><b id="kpi-attempts">0</b>回答</div>
-          <div class="kpi"><b id="kpi-total">0</b>問題</div>
-        </div>
-        <div id="quizList" class="list"><p class="muted">読み込み中...</p></div>
-      </div>
-
-      <!-- スライドモード本体 -->
-      <div id="pane-slide" style="display:none">
-        <div class="progress"><div class="bar" id="fc-bar"></div></div>
-        <div class="fc-wrap">
-          <div id="fc-card" class="fc-card">単語帳：右上の「読み込み」を押してください</div>
-          <img id="fc-img" alt="" />
-          <div class="row" style="margin-top:10px">
-            <button id="fc-prev">← 前へ</button>
-            <button id="fc-flip">裏返す</button>
-            <button id="fc-next">次へ →</button>
-          </div>
-          <div class="muted" style="margin-top:6px">Space: 表/裏　←/→: 前後　スワイプ可</div>
-        </div>
-      </div>
-    </section>
+<main>
+  <div class="tabs">
+    <button class="tab active" data-target="panel-create">クイズ作成</button>
+    <button class="tab" data-target="panel-list">単語帳（一覧）</button>
+    <button class="tab" data-target="panel-slide">単語帳（スライド）</button>
   </div>
 
-  <div id="toast" class="toast">保存しました</div>
+  <!-- クイズ作成 -->
+  <section id="panel-create" class="panel active">
+    <div class="card">
+      <h2 style="margin-top:0;font-size:15px;">クイズ作成</h2>
+      <p class="muted">問題文と答えを入力して「クイズを保存」を押すと、単語帳タブに追加されます。</p>
 
-  <script>
-    const API_BASE = window.location.origin;
-    const $ = (s)=>document.querySelector(s);
+      <div style="margin-top:8px;">
+        <label for="q-question">問題文</label>
+        <textarea id="q-question" placeholder="例）apple の日本語は？"></textarea>
+      </div>
+      <div style="margin-top:8px;">
+        <label for="q-answer">答え</label>
+        <input id="q-answer" type="text" placeholder="例）りんご">
+      </div>
+      <div style="margin-top:8px;">
+        <label for="q-prompt">画像生成用プロンプト（任意で上書き／追加）</label>
+        <textarea id="q-prompt" placeholder="デフォルトプロンプトに追加したい内容があれば記入"></textarea>
+        <p class="muted">※空欄なら、サーバ側の定型プロンプトだけで画像を生成します。</p>
+      </div>
 
-    const ui = {
-      tabCreate: $('#tab-create'),
-      tabWords:  $('#tab-words'),
-      secCreate: $('#create'),
-      secWords:  $('#words'),
-      form: $('#quizForm'),
-      q: $('#question'),
-      a: $('#answer'),
-      saveMsg: $('#saveMsg'),
-      goWords: $('#goWords'),
+      <div class="button-row">
+        <button class="primary" id="btn-save-quiz">クイズを保存</button>
+        <button class="secondary" id="btn-save-and-generate">保存＋画像生成</button>
+      </div>
+    </div>
+  </section>
 
-      // words 共通
-      subList:  $('#mode-list'),
-      subSlide: $('#mode-slide'),
-      paneList: $('#pane-list'),
-      paneSlide: $('#pane-slide'),
-      bar: $('#fc-bar'),
+  <!-- 単語帳（一覧） -->
+  <section id="panel-list" class="panel">
+    <div class="card">
+      <div class="row">
+        <label>フィルタ</label>
+        <select id="list-status">
+          <option value="all">すべて</option>
+          <option value="only_unanswered">未回答のみ</option>
+          <option value="only_incorrect">直近不正解のみ</option>
+        </select>
+        <button class="secondary" id="btn-reload-list">再読み込み</button>
+      </div>
+      <div class="row">
+        <label for="list-search">検索</label>
+        <input id="list-search" type="text" placeholder="問題文で部分一致検索">
+      </div>
+      <div class="divider"></div>
+      <div id="quiz-list" class="quiz-list"></div>
+      <p class="muted" id="list-empty" style="display:none;margin-top:8px;">クイズがまだ登録されていません。</p>
+    </div>
+  </section>
 
-      // 共通フィルタ
-      cat: $('#fc-category'),
-      top: $('#fc-topic'),
+  <!-- 単語帳（スライド） -->
+  <section id="panel-slide" class="panel">
+    <div class="card">
+      <div class="row">
+        <label>対象</label>
+        <select id="slide-status">
+          <option value="all">すべて</option>
+          <option value="only_unanswered">未回答のみ</option>
+          <option value="only_incorrect">直近不正解のみ</option>
+        </select>
+        <button class="secondary" id="btn-reload-slide">読み込み</button>
+      </div>
+      <div class="divider"></div>
+      <div class="slide-container">
+        <div id="slide-card" class="slide-card" style="display:none;">
+          <div class="slide-question" id="slide-question"></div>
+          <div class="slide-image-wrapper" id="slide-image-wrapper" style="display:none;">
+            <img id="slide-image" alt="生成画像">
+          </div>
+          <div class="slide-answer" id="slide-answer" style="display:none;"></div>
+        </div>
+        <p class="muted" id="slide-empty">クイズが読み込まれていません。</p>
+      </div>
+      <div class="slide-controls">
+        <div>
+          <button class="secondary" id="btn-prev">← 前の問題</button>
+          <button class="secondary" id="btn-next">次の問題 →</button>
+        </div>
+        <div>
+          <button class="secondary" id="btn-toggle-answer">答えを表示/非表示</button>
+        </div>
+      </div>
+      <div class="slide-index" id="slide-index"></div>
+    </div>
+  </section>
+</main>
 
-      // 一覧用
-      imgMode: $('#imgMode'),
-      filter:  $('#filterMode'),
-      reload:  $('#reloadBtn'),
-      list:    $('#quizList'),
-      kpiAcc:  $('#kpi-acc'),
-      kpiAtt:  $('#kpi-attempts'),
-      kpiTotal:$('#kpi-total'),
+<div id="toast" class="toast"></div>
 
-      // スライド用
-      sShuffle: $('#fc-shuffle'),
-      sLimit:   $('#fc-limit'),
-      sAnsFirst:$('#fc-answer-first'),
-      sReload:  $('#fc-reload'),
-      sCard:    $('#fc-card'),
-      sImg:     $('#fc-img'),
-      sPrev:    $('#fc-prev'),
-      sNext:    $('#fc-next'),
-      sFlip:    $('#fc-flip'),
+<script>
+  // ===== ユーザートークン(X-Token)の管理 =====
+  if (!localStorage.getItem("token")) {
+    localStorage.setItem("token", "user-" + Math.random().toString(36).slice(2));
+  }
+  const TOKEN = localStorage.getItem("token");
+  document.getElementById("tokenIndicator").textContent =
+    "User Token: " + TOKEN;
 
-      listOnly:  $('#list-only'),
-      slideOnly: $('#slide-only'),
-    };
+  const API_BASE = ""; // 同じオリジンで動作する想定
 
-    const api = {
-      j: async r=>{ if(!r.ok) throw new Error(await r.text()); return r.json(); },
-      create:(q,a)=>fetch(`${API_BASE}/quiz/create`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:q,answer:a})}).then(api.j),
-      list:(status)=>fetch(`${API_BASE}/quiz/list?status=${status||'all'}`).then(api.j),
-      del:id=>fetch(`${API_BASE}/quiz/${id}`,{method:'DELETE'}),
-      regen:(id,prompt,force)=>fetch(`${API_BASE}/quiz/image/generate?force=${force?'true':'false'}`,{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({quiz_id:id,prompt:prompt||null})
-      }).then(api.j),
-      latest:id=>fetch(`${API_BASE}/quiz/${id}/images/latest`).then(api.j),
-      answer:(id,ans,img)=>fetch(`${API_BASE}/quiz/${id}/answer`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({answer:ans,image_shown:img})}).then(api.j),
-      stats:()=>fetch(`${API_BASE}/stats/summary`).then(api.j),
-    };
+  function showToast(message) {
+    const el = document.getElementById("toast");
+    el.textContent = message;
+    el.classList.remove("show");
+    // 強制リフロー
+    void el.offsetWidth;
+    el.classList.add("show");
+  }
 
-    function toast(m){ const t=document.getElementById('toast'); t.textContent=m; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),1300); }
-
-    // ===== タブ切替（大タブ：作成 / 単語帳） =====
-    function activate(tab){
-      [ui.tabCreate, ui.tabWords].forEach(b=>b.classList.remove('active'));
-      [ui.secCreate, ui.secWords].forEach(s=>s.classList.remove('active'));
-      if(tab==='create'){ ui.tabCreate.classList.add('active'); ui.secCreate.classList.add('active'); }
-      if(tab==='words'){  ui.tabWords.classList.add('active');  ui.secWords.classList.add('active'); renderList(); renderStats(); }
-    }
-    ui.tabCreate.onclick=()=>activate('create');
-    ui.tabWords.onclick=()=>activate('words');
-    ui.goWords.onclick=()=>activate('words');
-
-    // ===== 作成 =====
-    document.getElementById('quizForm').addEventListener('submit', async (e)=>{
-      e.preventDefault();
-      try{ await api.create(ui.q.value.trim(), ui.a.value.trim()); ui.q.value=''; ui.a.value=''; toast('保存しました'); }
-      catch{ toast('保存に失敗'); }
+  async function apiFetch(path, options = {}) {
+    const opts = Object.assign({ method: "GET" }, options);
+    opts.headers = Object.assign({}, opts.headers, {
+      "X-Token": TOKEN
     });
+    // JSONボディなら Content-Type を付与
+    if (opts.body && !opts.headers["Content-Type"]) {
+      opts.headers["Content-Type"] = "application/json";
+    }
+    const res = await fetch(API_BASE + path, opts);
+    if (!res.ok) {
+      let msg = `API error ${res.status}`;
+      try {
+        const data = await res.json();
+        if (data.detail) msg += `: ${JSON.stringify(data.detail)}`;
+      } catch (_) {}
+      throw new Error(msg);
+    }
+    const ct = res.headers.get("content-type") || "";
+    if (ct.includes("application/json")) {
+      return res.json();
+    }
+    return res.text();
+  }
 
-    // ===== 単語帳（一覧） =====
-    async function renderStats(){
-      try{
-        const s=await api.stats();
-        ui.kpiAcc.textContent=`${Math.round(s.accuracy*100)}%`;
-        ui.kpiAtt.textContent=s.attempts;
-        ui.kpiTotal.textContent=s.total_quizzes;
-      }catch{}
-    }
-    async function renderList(){
-      ui.list.innerHTML='<p class="muted">読み込み中...</p>';
-      try{
-        const rows=await api.list(ui.filter.value);
-        const showImg=ui.imgMode.value==='on';
-        const fr=document.createDocumentFragment();
-        for(const q of rows){
-          const c=document.createElement('div');
-          c.className='item';
-          c.innerHTML=`
-            <div class="row" style="justify-content:space-between">
-              <div><b>#${q.id}</b> ${q.question}</div>
-              <div class="row">
-                <button class="secondary" data-act="regen" data-id="${q.id}">画像生成 / 再生成</button>
-                <button class="warn" data-act="del" data-id="${q.id}">削除</button>
-              </div>
-            </div>
-            <div class="row" style="margin-top:4px">
-              <input type="text"
-                     placeholder="画像プロンプトを追加（任意）"
-                     data-img-prompt="${q.id}" />
-            </div>
-            <div class="ansbox">
-              <input type="text" placeholder="答えを入力" data-answer-input="${q.id}" />
-              <button class="ghost" data-act="check" data-id="${q.id}">判定・記録</button>
-              <span class="judge muted" data-judge="${q.id}"></span>
-            </div>
-            <div class="img-slot"></div>`;
-          fr.appendChild(c);
-          if(showImg){
-            try{
-              const im=await api.latest(q.id);
-              if(im?.file_path){
-                const img=document.createElement('img');
-                img.className='thumb'; img.src=`${API_BASE}/${im.file_path}`;
-                c.querySelector('.img-slot').appendChild(img);
-              }
-            }catch{}
-          }
-        }
-        ui.list.innerHTML=''; ui.list.appendChild(fr);
-      }catch(e){ ui.list.innerHTML=`<p class="muted">エラー: ${e.message}</p>`; }
-    }
-
-    document.addEventListener('click',async e=>{
-      const b=e.target.closest('button[data-act]'); if(!b) return;
-      const id=b.dataset.id, act=b.dataset.act;
-      if(act==='del'){
-        if(confirm('削除しますか？')){ await api.del(id); toast('削除'); await renderList(); }
-      }
-      if(act==='regen'){
-        // 入力されている追加プロンプトを取得（空なら定型のみで生成）
-        const inp=document.querySelector(`[data-img-prompt="${id}"]`);
-        const extra = inp ? inp.value.trim() : '';
-        try{
-          await api.regen(id, extra || null, false);
-          toast('画像を生成しました');
-          await renderList();
-        }catch(err){
-          toast('画像生成に失敗しました');
-        }
-      }
-      if(act==='check'){
-        const i=document.querySelector(`[data-answer-input="${id}"]`);
-        const j=document.querySelector(`[data-judge="${id}"]`);
-        const ans=i.value.trim();
-        const hasImg=!!document.querySelector(`.item:nth-child(${id}) img`);
-        try{
-          const r=await api.answer(id,ans,hasImg);
-          j.textContent=r.correct?'正しい（記録）':'誤り（記録）';
-          j.className='judge '+(r.correct?'ok':'ng');
-          await renderStats();
-        }catch{
-          j.textContent='記録エラー';
-          j.className='judge ng';
-        }
-      }
-    });
-    ui.reload.onclick=()=>{ renderList(); renderStats(); };
-    ui.imgMode.onchange=renderList;
-    ui.filter.onchange=renderList;
-
-    // ===== 単語帳（スライド） =====
-    let fcAll=[], fcCards=[], fcIdx=0, fcShowBack=false;
-    function unique(arr){ return [...new Set(arr)].filter(Boolean); }
-    function mapQuizzesToCards(quizzes){
-      return quizzes.map(q=>({
-        id:q.id, front:q.question, back:q.answer,
-        category:q.category ?? q.tag ?? null,
-        topic:q.topic ?? q.subtag ?? null,
-        tags:q.tags ?? null,
-        image_url:null
-      }));
-    }
-    function populateFilters(cards){
-      const cats = unique(cards.flatMap(c=>[c.category, ...(Array.isArray(c.tags)?c.tags:[])]));
-      const tops = unique(cards.map(c=>c.topic));
-      ui.cat.innerHTML = '<option value="">すべての分野</option>' + cats.map(v=>`<option value="${v}">${v}</option>`).join('');
-      ui.top.innerHTML = '<option value="">すべての項目</option>' + tops.map(v=>`<option value="${v}">${v}</option>`).join('');
-    }
-    function applyFilter(){
-      const cat=ui.cat.value, top=ui.top.value;
-      fcCards = fcAll.filter(c=>{
-        const okCat=!cat || c.category===cat || (Array.isArray(c.tags)&&c.tags.includes(cat));
-        const okTop=!top || c.topic===top;
-        return okCat && okTop;
+  // ===== タブ切り替え =====
+  document.querySelectorAll(".tab").forEach(tab => {
+    tab.addEventListener("click", () => {
+      document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+      tab.classList.add("active");
+      const target = tab.dataset.target;
+      document.querySelectorAll("section.panel").forEach(sec => {
+        sec.classList.toggle("active", sec.id === target);
       });
-      fcIdx=0; renderSlide();
-    }
-    function updateBar(){
-      ui.bar.style.width = fcCards.length ? Math.round(((fcIdx+1)/fcCards.length)*100)+'%' : '0%';
-    }
-    function adjustImg(){
-      if($('#words').style.display==='none') return;
-      const topToolbar = 200, bottomControls = 150, margin = 24;
-      const avail = Math.max(160, window.innerHeight - topToolbar - bottomControls - margin);
-      ui.sImg.style.maxHeight = avail + 'px';
-    }
-    function renderSlide(){
-      if(!fcCards.length){ ui.sCard.textContent='該当データがありません'; ui.sImg.style.display='none'; updateBar(); return; }
-      const c=fcCards[fcIdx];
-      ui.sCard.textContent = fcShowBack ? (c.back ?? '') : (c.front ?? '');
-      if(c.image_url){
-        ui.sImg.onload=adjustImg; ui.sImg.src=c.image_url; ui.sImg.style.display='block';
-      }else{
-        if(c._img_loading!==true){
-          c._img_loading=true;
-          api.latest(c.id).then(im=>{
-            if(im?.file_path){ c.image_url=`${API_BASE}/${im.file_path}`; renderSlide(); }
-          }).catch(()=>{});
-        }
-        ui.sImg.style.display='none';
-      }
-      updateBar();
-    }
-    function shuffleInPlace(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } }
-    function slide(change, dir){
-      const card=ui.sCard, img=ui.sImg;
-      const outClass = dir==='next'?'fc-out-left':'fc-out-right';
-      const inClass  = dir==='next'?'fc-in-right':'fc-in-left';
-      [card,img].forEach(el=>{ if(el && el.style.display!=='none'){ el.classList.add('fc-anim',outClass);} });
-      function onOut(){
-        change(); fcShowBack=false; renderSlide();
-        [card,img].forEach(el=>{
-          if(!el || el.style.display==='none') return;
-          el.classList.remove(outClass); void el.offsetWidth;
-          el.classList.add(inClass);
-          el.addEventListener('animationend', function onIn(){ el.classList.remove('fc-anim',inClass); el.removeEventListener('animationend', onIn); }, {once:true});
-        });
-        card.removeEventListener('animationend', onOut);
-        img && img.removeEventListener('animationend', onOut);
-      }
-      card.addEventListener('animationend', onOut, {once:true});
-      img && img.addEventListener('animationend', onOut, {once:true});
-    }
-    async function loadSlide(){
-      ui.sCard.textContent='読み込み中...'; ui.sImg.style.display='none';
-      const limit = Number(ui.sLimit.value);
-      const rows = await api.list('all');
-      fcAll = mapQuizzesToCards(rows).slice(0, limit);
-      if(ui.sShuffle.checked) shuffleInPlace(fcAll);
-      populateFilters(fcAll);
-      applyFilter();
-      fcShowBack = !!ui.sAnsFirst.checked;
-    }
-    // 監視
-    ui.sReload.onclick=loadSlide;
-    ui.sFlip.onclick=()=>{ fcShowBack=!fcShowBack; renderSlide(); };
-    ui.sNext.onclick=()=>{ if(fcIdx<fcCards.length-1) slide(()=>{ fcIdx++; }, 'next'); };
-    ui.sPrev.onclick=()=>{ if(fcIdx>0) slide(()=>{ fcIdx--; }, 'prev'); };
-    window.addEventListener('keydown', (e)=>{
-      if($('#words').style.display==='none' || ui.paneSlide.style.display==='none') return;
-      if(e.code==='Space'){ e.preventDefault(); fcShowBack=!fcShowBack; renderSlide(); }
-      if(e.key==='ArrowRight' && fcIdx<fcCards.length-1) slide(()=>{ fcIdx++; }, 'next');
-      if(e.key==='ArrowLeft'  && fcIdx>0)                slide(()=>{ fcIdx--; }, 'prev');
     });
-    ui.cat.addEventListener('change', ()=>{ applyFilter(); });
-    ui.top.addEventListener('change', ()=>{ applyFilter(); });
-    window.addEventListener('resize', adjustImg);
+  });
 
-    // ===== サブモード切替（一覧 / スライド） =====
-    function switchMode(mode){
-      [ui.subList,ui.subSlide].forEach(b=>b.classList.remove('active'));
-      ui.paneList.style.display = mode==='list' ? '' : 'none';
-      ui.paneSlide.style.display = mode==='slide' ? '' : 'none';
-      document.getElementById('list-only').style.display  = mode==='list' ? '' : 'none';
-      document.getElementById('slide-only').style.display = mode==='slide' ? '' : 'none';
-      if(mode==='list'){ ui.subList.classList.add('active'); renderList(); renderStats(); }
-      if(mode==='slide'){ ui.subSlide.classList.add('active'); if(!window.__slide_inited){ window.__slide_inited=true; loadSlide(); } }
+  // ===== クイズ作成 =====
+  const qQuestion = document.getElementById("q-question");
+  const qAnswer  = document.getElementById("q-answer");
+  const qPrompt  = document.getElementById("q-prompt");
+  const btnSave  = document.getElementById("btn-save-quiz");
+  const btnSaveGen = document.getElementById("btn-save-and-generate");
+
+  async function createQuiz({ generateImage }) {
+    const question = qQuestion.value.trim();
+    const answer   = qAnswer.value.trim();
+    const prompt   = qPrompt.value.trim();
+    if (!question || !answer) {
+      showToast("問題文と答えを入力してください。");
+      return;
     }
-    ui.subList.onclick = ()=>switchMode('list');
-    ui.subSlide.onclick= ()=>switchMode('slide');
+    try {
+      const payload = { question, answer };
+      if (prompt) payload.prompt = prompt;
 
-    // 初期表示
-    activate('create');
-    ui.tabWords.addEventListener('click', ()=>switchMode('list'));
-  </script>
+      const quiz = await apiFetch("/quiz/create", {
+        method: "POST",
+        body: JSON.stringify(payload)
+      });
+
+      showToast("クイズを保存しました (ID: " + quiz.id + ")");
+      qQuestion.value = "";
+      qAnswer.value = "";
+      qPrompt.value = "";
+
+      if (generateImage) {
+        try {
+          await apiFetch(`/quiz/${quiz.id}/image/regen`, { method: "POST" });
+          showToast("クイズと画像を保存しました。");
+        } catch (e) {
+          console.error(e);
+          showToast("クイズは保存されましたが、画像生成でエラーが発生しました。");
+        }
+      }
+
+      // 一覧・スライドを自動更新
+      await loadQuizList();
+      await loadSlideData();
+
+    } catch (e) {
+      console.error(e);
+      showToast("クイズ保存中にエラーが発生しました。");
+    }
+  }
+
+  btnSave.addEventListener("click", () => createQuiz({ generateImage: false }));
+  btnSaveGen.addEventListener("click", () => createQuiz({ generateImage: true }));
+
+  // ===== 単語帳（一覧） =====
+  const listStatus = document.getElementById("list-status");
+  const listSearch = document.getElementById("list-search");
+  const btnReloadList = document.getElementById("btn-reload-list");
+  const listContainer = document.getElementById("quiz-list");
+  const listEmpty = document.getElementById("list-empty");
+
+  let listCache = [];
+
+  function renderQuizList() {
+    const q = listSearch.value.trim();
+    const filtered = listCache.filter(item =>
+      !q || (item.question && item.question.includes(q))
+    );
+
+    listContainer.innerHTML = "";
+    if (filtered.length === 0) {
+      listEmpty.style.display = "block";
+      return;
+    }
+    listEmpty.style.display = "none";
+
+    for (const quiz of filtered) {
+      const div = document.createElement("div");
+      div.className = "quiz-item";
+
+      const qEl = document.createElement("div");
+      qEl.className = "quiz-question";
+      qEl.textContent = quiz.question;
+      div.appendChild(qEl);
+
+      const aEl = document.createElement("div");
+      aEl.className = "quiz-answer";
+      aEl.textContent = quiz.answer;
+      div.appendChild(aEl);
+
+      const meta = document.createElement("div");
+      meta.className = "quiz-meta";
+
+      const left = document.createElement("div");
+      left.textContent = `ID: ${quiz.id}`;
+
+      const tags = document.createElement("div");
+      tags.className = "quiz-tags";
+
+      const tagStatus = document.createElement("span");
+      tagStatus.className = "pill";
+      let statusText = "未回答";
+      if (quiz.last_correct === true) statusText = "直近正解";
+      else if (quiz.last_correct === false) statusText = "直近不正解";
+      tagStatus.textContent = statusText;
+      tags.appendChild(tagStatus);
+
+      const tagCount = document.createElement("span");
+      tagCount.className = "pill";
+      tagCount.textContent = `解答回数: ${quiz.attempts ?? 0}`;
+      tags.appendChild(tagCount);
+
+      meta.appendChild(left);
+      meta.appendChild(tags);
+
+      div.appendChild(meta);
+      listContainer.appendChild(div);
+    }
+  }
+
+  async function loadQuizList() {
+    try {
+      const status = listStatus.value || "all";
+      const res = await apiFetch(`/quiz/list?order=created_desc&status=${encodeURIComponent(status)}&offset=0&limit=200`);
+      listCache = res || [];
+      renderQuizList();
+    } catch (e) {
+      console.error(e);
+      showToast("クイズ一覧の取得に失敗しました。");
+    }
+  }
+
+  btnReloadList.addEventListener("click", loadQuizList);
+  listSearch.addEventListener("input", () => renderQuizList());
+
+  // ===== 単語帳（スライド） =====
+  const slideStatusSel = document.getElementById("slide-status");
+  const btnReloadSlide = document.getElementById("btn-reload-slide");
+  const slideCard = document.getElementById("slide-card");
+  const slideQuestion = document.getElementById("slide-question");
+  const slideAnswer = document.getElementById("slide-answer");
+  const slideImageWrapper = document.getElementById("slide-image-wrapper");
+  const slideImage = document.getElementById("slide-image");
+  const slideEmpty = document.getElementById("slide-empty");
+  const slideIndex = document.getElementById("slide-index");
+  const btnPrev = document.getElementById("btn-prev");
+  const btnNext = document.getElementById("btn-next");
+  const btnToggleAnswer = document.getElementById("btn-toggle-answer");
+
+  let slideData = [];
+  let slidePos = 0;
+  let slideShowAnswer = false;
+
+  function renderSlide() {
+    if (!slideData || slideData.length === 0) {
+      slideCard.style.display = "none";
+      slideEmpty.style.display = "block";
+      slideIndex.textContent = "";
+      return;
+    }
+    slideCard.style.display = "block";
+    slideEmpty.style.display = "none";
+
+    const item = slideData[slidePos];
+    slideQuestion.textContent = item.question || "";
+    slideAnswer.textContent = item.answer || "";
+    slideAnswer.style.display = slideShowAnswer ? "block" : "none";
+
+    if (item.image_url) {
+      slideImageWrapper.style.display = "flex";
+      slideImage.src = item.image_url;
+    } else {
+      slideImageWrapper.style.display = "none";
+      slideImage.removeAttribute("src");
+    }
+
+    slideIndex.textContent = `${slidePos + 1} / ${slideData.length}`;
+  }
+
+  async function loadSlideData() {
+    try {
+      const status = slideStatusSel.value || "all";
+      const res = await apiFetch(`/quiz/list?order=created_desc&status=${encodeURIComponent(status)}&offset=0&limit=200`);
+      slideData = res || [];
+      slidePos = 0;
+      slideShowAnswer = false;
+      renderSlide();
+    } catch (e) {
+      console.error(e);
+      showToast("スライド用データの取得に失敗しました。");
+    }
+  }
+
+  btnReloadSlide.addEventListener("click", loadSlideData);
+
+  btnPrev.addEventListener("click", () => {
+    if (!slideData || slideData.length === 0) return;
+    slidePos = (slidePos - 1 + slideData.length) % slideData.length;
+    slideShowAnswer = false;
+    renderSlide();
+  });
+
+  btnNext.addEventListener("click", () => {
+    if (!slideData || slideData.length === 0) return;
+    slidePos = (slidePos + 1) % slideData.length;
+    slideShowAnswer = false;
+    renderSlide();
+  });
+
+  btnToggleAnswer.addEventListener("click", () => {
+    slideShowAnswer = !slideShowAnswer;
+    renderSlide();
+  });
+
+  // ===== 初期ロード =====
+  loadQuizList();
+  loadSlideData();
+
+</script>
 </body>
 </html>
