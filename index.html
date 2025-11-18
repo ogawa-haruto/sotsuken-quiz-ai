@@ -423,7 +423,7 @@
       </div>
       <p class="muted" style="margin-top:4px;">
         問題だけを見て答えを入力し、「判定」で正誤を記録します。<br>
-        画像は任意で生成・再生成できます。
+        画像は「画像生成/再生成」ボタンから、その都度プロンプトを入力して生成できます。
       </p>
       <div class="divider"></div>
       <div id="quiz-list" class="quiz-list"></div>
@@ -661,16 +661,6 @@
       header.appendChild(btns);
       item.appendChild(header);
 
-      // 画像用プロンプト入力
-      const imgRow = document.createElement("div");
-      imgRow.className = "row";
-      const imgInput = document.createElement("input");
-      imgInput.type = "text";
-      imgInput.placeholder = "画像プロンプトを追加（任意）";
-      imgInput.setAttribute("data-img-prompt", q.id);
-      imgRow.appendChild(imgInput);
-      item.appendChild(imgRow);
-
       // 解答入力＋判定
       const ansRow = document.createElement("div");
       ansRow.className = "answer-row";
@@ -742,12 +732,20 @@
     }
 
     if (action === "regen") {
-      const promptInput = document.querySelector(`[data-img-prompt="${id}"]`);
-      const extra = promptInput ? promptInput.value.trim() : "";
+      // ここで一時的なテキストウィンドウ（ブラウザ標準のprompt）を出す
+      const extra = window.prompt(
+        "画像生成用に追加したいプロンプト（空欄なら定型プロンプトのみで生成します）",
+        ""
+      );
+      if (extra === null) {
+        // キャンセルされたら何もしない
+        return;
+      }
+      const trimmed = extra.trim();
       try {
         await apiFetch(`/quiz/${id}/image/regen`, {
           method: "POST",
-          body: JSON.stringify({ prompt: extra || null })
+          body: JSON.stringify({ prompt: trimmed || null })
         });
         showToast(`クイズ #${id} の画像を生成 / 再生成しました。`);
         await loadQuizList(); // 最新サムネイルを反映
