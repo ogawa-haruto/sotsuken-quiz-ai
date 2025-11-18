@@ -530,48 +530,56 @@
   const btnSaveGen = document.getElementById("btn-save-and-generate");
 
   async function createQuiz({ generateImage }) {
-    const question = qQuestion.value.trim();
-    const answer   = qAnswer.value.trim();
-    const prompt   = qPrompt.value.trim();
-    if (!question || !answer) {
-      showToast("問題文と答えを入力してください。");
-      return;
-    }
-    try {
-      const payload = { question, answer };
-      if (prompt) payload.prompt = prompt;
+  const question = qQuestion.value.trim();
+  const answer   = qAnswer.value.trim();
+  const prompt   = qPrompt.value.trim();
 
-      const quiz = await apiFetch("/quiz/create", {
-        method: "POST",
-        body: JSON.stringify(payload)
-      });
-
-      showToast("クイズを保存しました (ID: " + quiz.id + ")");
-      qQuestion.value = "";
-      qAnswer.value = "";
-      qPrompt.value = "";
-
-      if (generateImage) {
-        try {
-          await apiFetch(`/quiz/${quiz.id}/image/regen`, {
-            method: "POST",
-            body: JSON.stringify({ prompt: prompt || null })
-          });
-          showToast("クイズと画像を保存しました。");
-        } catch (e) {
-          console.error(e);
-          showToast("クイズは保存されましたが、画像生成でエラーが発生しました。");
-        }
-      }
-
-      await loadQuizList();
-      await loadSlideData();
-
-    } catch (e) {
-      console.error(e);
-      showToast("クイズ保存中にエラーが発生しました。");
-    }
+  if (!question || !answer) {
+    showToast("問題文と答えを入力してください。");
+    return;
   }
+
+  try {
+    // まずクイズ本体を保存
+    const payload = { question, answer };
+    if (prompt) payload.prompt = prompt;
+
+    const quiz = await apiFetch("/quiz/create", {
+      method: "POST",
+      body: JSON.stringify(payload)
+    });
+
+    showToast("クイズを保存しました (ID: " + quiz.id + ")");
+    qQuestion.value = "";
+    qAnswer.value = "";
+    qPrompt.value = "";
+
+    // 「保存＋画像生成」が押されたときだけ画像生成APIを呼ぶ
+    if (generateImage) {
+      try {
+        await apiFetch("/quiz/image/generate", {
+          method: "POST",
+          body: JSON.stringify({
+            quiz_id: quiz.id,      // ← ここに保存したクイズIDを渡す
+            prompt: prompt || null // ← 追加プロンプト（空なら null）
+          })
+        });
+        showToast("クイズと画像を保存しました。");
+      } catch (e) {
+        console.error(e);
+        showToast("クイズは保存されましたが、画像生成でエラーが発生しました。");
+      }
+    }
+
+    // 一覧とスライドを更新
+    await loadQuizList();
+    await loadSlideData();
+
+  } catch (e) {
+    console.error(e);
+    showToast("クイズ保存中にエラーが発生しました。");
+  }
+}
 
   btnSave.addEventListener("click", () => createQuiz({ generateImage: false }));
   btnSaveGen.addEventListener("click", () => createQuiz({ generateImage: true }));
@@ -743,9 +751,12 @@
       }
       const trimmed = extra.trim();
       try {
-        await apiFetch(`/quiz/${id}/image/regen`, {
+        await apiFetch(`/quiz/image/generate`, {
           method: "POST",
-          body: JSON.stringify({ prompt: trimmed || null })
+          body: JSON.stringify({
+            quiz_id: Number(id),
+            prompt: trimmed || null
+          })
         });
         showToast(`クイズ #${id} の画像を生成 / 再生成しました。`);
         await loadQuizList(); // 最新サムネイルを反映
