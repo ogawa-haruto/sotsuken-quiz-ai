@@ -35,8 +35,11 @@ def create_app() -> FastAPI:
         Base.metadata.create_all(bind=engine)
         try:
             with engine.connect() as conn:
-                v = conn.execute(text("SELECT version()")).scalar()
-                log.info(f"[DB] Connected dialect={engine.dialect.name} version={v}")
+                dialect = conn.dialect.name  # 'sqlite', 'postgresql', etc.
+                # ✅ DBの種類に応じて正しい関数を選ぶ
+                query = text("SELECT sqlite_version()") if dialect == "sqlite" else text("SELECT version()")
+                v = conn.execute(query).scalar()
+                log.info(f"[DB] Connected dialect={dialect} version={v}")
         except Exception as e:
             log.error(f"[DB] Connection failed: {e}")
 
