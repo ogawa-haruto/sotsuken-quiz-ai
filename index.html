@@ -244,7 +244,11 @@
       create:(q,a)=>fetch(`${API_BASE}/quiz/create`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:q,answer:a})}).then(api.j),
       list:(status)=>fetch(`${API_BASE}/quiz/list?status=${status||'all'}`).then(api.j),
       del:id=>fetch(`${API_BASE}/quiz/${id}`,{method:'DELETE'}),
-      regen:(id,prompt,force)=>fetch(`${API_BASE}/quiz/image/generate?force=${force?'true':'false'}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({quiz_id:id,prompt})}).then(api.j),
+      regen:(id,prompt,force)=>fetch(`${API_BASE}/quiz/image/generate?force=${force?'true':'false'}`,{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({quiz_id:id,prompt:prompt||null})
+      }).then(api.j),
       latest:id=>fetch(`${API_BASE}/quiz/${id}/images/latest`).then(api.j),
       answer:(id,ans,img)=>fetch(`${API_BASE}/quiz/${id}/answer`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({answer:ans,image_shown:img})}).then(api.j),
       stats:()=>fetch(`${API_BASE}/stats/summary`).then(api.j),
@@ -292,9 +296,14 @@
             <div class="row" style="justify-content:space-between">
               <div><b>#${q.id}</b> ${q.question}</div>
               <div class="row">
-                <button class="secondary" data-act="regen" data-id="${q.id}">再生成</button>
+                <button class="secondary" data-act="regen" data-id="${q.id}">画像生成 / 再生成</button>
                 <button class="warn" data-act="del" data-id="${q.id}">削除</button>
               </div>
+            </div>
+            <div class="row" style="margin-top:4px">
+              <input type="text"
+                     placeholder="画像プロンプトを追加（任意）"
+                     data-img-prompt="${q.id}" />
             </div>
             <div class="ansbox">
               <input type="text" placeholder="答えを入力" data-answer-input="${q.id}" />
@@ -317,20 +326,39 @@
         ui.list.innerHTML=''; ui.list.appendChild(fr);
       }catch(e){ ui.list.innerHTML=`<p class="muted">エラー: ${e.message}</p>`; }
     }
+
     document.addEventListener('click',async e=>{
       const b=e.target.closest('button[data-act]'); if(!b) return;
       const id=b.dataset.id, act=b.dataset.act;
-      if(act==='del'){ if(confirm('削除しますか？')){ await api.del(id); toast('削除'); await renderList(); } }
-      if(act==='regen'){ const p=prompt('画像プロンプト（空欄OK）',''); await api.regen(id,p,false); toast('生成完了'); await renderList(); }
+      if(act==='del'){
+        if(confirm('削除しますか？')){ await api.del(id); toast('削除'); await renderList(); }
+      }
+      if(act==='regen'){
+        // 入力されている追加プロンプトを取得（空なら定型のみで生成）
+        const inp=document.querySelector(`[data-img-prompt="${id}"]`);
+        const extra = inp ? inp.value.trim() : '';
+        try{
+          await api.regen(id, extra || null, false);
+          toast('画像を生成しました');
+          await renderList();
+        }catch(err){
+          toast('画像生成に失敗しました');
+        }
+      }
       if(act==='check'){
         const i=document.querySelector(`[data-answer-input="${id}"]`);
         const j=document.querySelector(`[data-judge="${id}"]`);
         const ans=i.value.trim();
         const hasImg=!!document.querySelector(`.item:nth-child(${id}) img`);
-        try{ const r=await api.answer(id,ans,hasImg);
+        try{
+          const r=await api.answer(id,ans,hasImg);
           j.textContent=r.correct?'正しい（記録）':'誤り（記録）';
-          j.className='judge '+(r.correct?'ok':'ng'); await renderStats();
-        }catch{ j.textContent='記録エラー'; j.className='judge ng'; }
+          j.className='judge '+(r.correct?'ok':'ng');
+          await renderStats();
+        }catch{
+          j.textContent='記録エラー';
+          j.className='judge ng';
+        }
       }
     });
     ui.reload.onclick=()=>{ renderList(); renderStats(); };
@@ -343,7 +371,9 @@
     function mapQuizzesToCards(quizzes){
       return quizzes.map(q=>({
         id:q.id, front:q.question, back:q.answer,
-        category:q.category ?? q.tag ?? null, topic:q.topic ?? q.subtag ?? null, tags:q.tags ?? null,
+        category:q.category ?? q.tag ?? null,
+        topic:q.topic ?? q.subtag ?? null,
+        tags:q.tags ?? null,
         image_url:null
       }));
     }
