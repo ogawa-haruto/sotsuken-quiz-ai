@@ -655,8 +655,8 @@
           data.path ||
           data.imagePath ||
           data.image_path ||
-          data.file_path ||   // ★これを追加
-          data.filepath
+          data.file_path ||
+          data.filepath ||
           "";
 
         if (!rawUrl) {
@@ -668,8 +668,9 @@
 
         let fullUrl = rawUrl;
         if (!/^https?:\/\//i.test(rawUrl)) {
-          // 相対パスなら API_BASE_URL を付ける
-          fullUrl = API_BASE_URL + rawUrl;
+          // 相対パスなら API_BASE_URL を付ける（スラッシュ不足も補正）
+          const sep = rawUrl.startsWith("/") ? "" : "/";
+          fullUrl = API_BASE_URL + sep + rawUrl;
         }
 
         if (forceReload) {
