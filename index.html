@@ -470,399 +470,190 @@
 <div id="toast" class="toast"></div>
 
 <script>
-  // ===== ユーザートークン(X-Token)の管理 =====
-  if (!localStorage.getItem("token")) {
-    localStorage.setItem("token", "user-" + Math.random().toString(36).slice(2));
-  }
-  const TOKEN = localStorage.getItem("token");
-  document.getElementById("tokenIndicator").textContent =
-    "User Token: " + TOKEN;
+  // API のベース URL
+  const API_BASE_URL = location.hostname === "localhost" || location.hostname === "127.0.0.1"
+    ? "http://127.0.0.1:8000"
+    : "https://sotsuken-quiz-ai.onrender.com";
 
-  const API_BASE = ""; // 同じオリジンで動作する想定
-
-  function showToast(message) {
-    const el = document.getElementById("toast");
-    el.textContent = message;
-    el.classList.remove("show");
-    void el.offsetWidth;
-    el.classList.add("show");
-  }
-
+  // 共通 fetch ラッパー
   async function apiFetch(path, options = {}) {
-    const opts = Object.assign({ method: "GET" }, options);
-    opts.headers = Object.assign({}, opts.headers, {
-      "X-Token": TOKEN
+    const res = await fetch(`${API_BASE_URL}${path}`, {
+      headers: {
+        "Content-Type": "application/json",
+      },
+      ...options,
     });
-    if (opts.body && !opts.headers["Content-Type"]) {
-      opts.headers["Content-Type"] = "application/json";
-    }
-    const res = await fetch(API_BASE + path, opts);
     if (!res.ok) {
-      let msg = `API error ${res.status}`;
-      try {
-        const data = await res.json();
-        if (data.detail) msg += `: ${JSON.stringify(data.detail)}`;
-      } catch (_) {}
-      throw new Error(msg);
+      const text = await res.text().catch(() => "");
+      console.error("API error", res.status, path, text);
+      throw new Error(`API error ${res.status}`);
     }
-    const ct = res.headers.get("content-type") || "";
-    if (ct.includes("application/json")) {
-      return res.json();
-    }
-    return res.text();
+    return res;
   }
 
-  // ===== タブ切り替え =====
-  document.querySelectorAll(".tab").forEach(tab => {
-    tab.addEventListener("click", () => {
-      document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
-      tab.classList.add("active");
-      const target = tab.dataset.target;
-      document.querySelectorAll("section.panel").forEach(sec => {
-        sec.classList.toggle("active", sec.id === target);
-      });
+  // -----------------------------
+  // 単語帳（一覧）描画まわり
+  // -----------------------------
+
+  const wordbookListEl = document.getElementById("wordbook-list"); // 単語カードを入れている親要素
+
+  // 一覧を読み込んで描画
+  async function loadWordbookList(status = "all") {
+    const res = await apiFetch(`/quiz/list?status=${encodeURIComponent(status)}`);
+    const quizzes = await res.json();
+    renderWordbookList(quizzes);
+  }
+
+  // カードを描画
+  function renderWordbookList(quizzes) {
+    wordbookListEl.innerHTML = "";
+
+    quizzes.forEach((quiz) => {
+      const card = document.createElement("div");
+      card.className = "word-card";
+      card.dataset.quizId = quiz.id;
+
+      card.innerHTML = `
+        <div class="word-card-header">
+          <div class="word-card-title">#${quiz.id} ${quiz.question}</div>
+          <div class="word-card-badges">
+            <span class="badge status-badge">${quiz.last_correct ? "直近正解" : "未回答"}</span>
+            <span class="badge attempts-badge">解答回数: ${quiz.attempts}</span>
+          </div>
+        </div>
+
+        <div class="word-card-body">
+          <div class="word-card-image-wrapper">
+            <img class="word-card-image" style="display:none; max-width: 100%; border-radius: 8px;" alt="生成画像">
+          </div>
+
+          <div class="word-card-answer-row">
+            <input class="answer-input" type="text" placeholder="ここに答えを入力">
+            <button class="btn btn-primary check-button">判定</button>
+            <button class="btn btn-secondary image-generate-button">画像生成 / 再生成</button>
+            <button class="btn btn-danger delete-button">削除</button>
+          </div>
+
+          <div class="word-card-feedback"></div>
+        </div>
+      `;
+
+      // ボタンクリックのイベント設定
+      const checkBtn   = card.querySelector(".check-button");
+      const genBtn     = card.querySelector(".image-generate-button");
+      const deleteBtn  = card.querySelector(".delete-button");
+      const answerInp  = card.querySelector(".answer-input");
+
+      checkBtn.addEventListener("click", () => handleCheckAnswer(quiz.id, card));
+      genBtn.addEventListener("click", () => handleGenerateImage(quiz.id, card));
+      deleteBtn.addEventListener("click", () => handleDeleteQuiz(quiz.id));
+
+      // 初期表示時に、すでに画像があれば取得して表示
+      refreshQuizImage(quiz.id, card);
+
+      wordbookListEl.appendChild(card);
     });
-  });
+  }
 
-  // ===== クイズ作成 =====
-  const qQuestion = document.getElementById("q-question");
-  const qAnswer  = document.getElementById("q-answer");
-  const btnSave  = document.getElementById("btn-save-quiz");
-  const btnSaveGen = document.getElementById("btn-save-and-generate");
+  // -----------------------------
+  // 画像の取得・表示
+  // -----------------------------
 
-  async function createQuiz({ generateImage }) {
-    const question = qQuestion.value.trim();
-    const answer   = qAnswer.value.trim();
-
-    if (!question || !answer) {
-      showToast("問題文と答えを入力してください。");
-      return;
-    }
-
+  // 最新画像を取得して、そのカード内の <img> に反映
+  async function refreshQuizImage(quizId, cardEl) {
     try {
-      // まずクイズ本体を保存
-      const payload = { question, answer };
-
-      const quiz = await apiFetch("/quiz/create", {
-        method: "POST",
-        body: JSON.stringify(payload)
-      });
-
-      showToast("クイズを保存しました (ID: " + quiz.id + ")");
-      qQuestion.value = "";
-      qAnswer.value = "";
-
-      // 「保存＋画像生成」が押されたときだけ画像生成APIを呼ぶ
-      if (generateImage) {
-        try {
-          await apiFetch("/quiz/image/generate", {
-            method: "POST",
-            body: JSON.stringify({
-              quiz_id: quiz.id
-            })
-          });
-          showToast("クイズと画像を保存しました。");
-        } catch (e) {
-          console.error(e);
-          showToast("クイズは保存されましたが、画像生成でエラーが発生しました。");
-        }
-      }
-
-      // 一覧とスライドを更新
-      await loadQuizList();
-      await loadSlideData();
-
-    } catch (e) {
-      console.error(e);
-      showToast("クイズ保存中にエラーが発生しました。");
-    }
-  }
-
-  btnSave.addEventListener("click", () => createQuiz({ generateImage: false }));
-  btnSaveGen.addEventListener("click", () => createQuiz({ generateImage: true }));
-
-  // ===== 単語帳（一覧） 暗記カードモード =====
-  const listStatus = document.getElementById("list-status");
-  const btnReloadList = document.getElementById("btn-reload-list");
-  const listContainer = document.getElementById("quiz-list");
-  const listEmpty = document.getElementById("list-empty");
-
-  let listItems = [];
-
-  async function loadQuizList() {
-    try {
-      const status = listStatus.value || "all";
-      const rows = await apiFetch(`/quiz/list?status=${encodeURIComponent(status)}`);
-      listItems = rows || [];
-      await renderQuizList();
-    } catch (e) {
-      console.error(e);
-      showToast("クイズ一覧の取得に失敗しました。");
-    }
-  }
-
-  async function renderQuizList() {
-    listContainer.innerHTML = "";
-    if (!listItems || listItems.length === 0) {
-      listEmpty.style.display = "block";
-      return;
-    }
-    listEmpty.style.display = "none";
-
-    for (const q of listItems) {
-      const item = document.createElement("div");
-      item.className = "quiz-item";
-      item.dataset.id = q.id;
-
-      const header = document.createElement("div");
-      header.className = "quiz-header";
-
-      const left = document.createElement("div");
-      const qTitle = document.createElement("div");
-      qTitle.className = "quiz-question";
-      qTitle.textContent = `#${q.id} ${q.question || ""}`;
-      left.appendChild(qTitle);
-
-      const metaRow = document.createElement("div");
-      metaRow.className = "quiz-meta";
-
-      const tags = document.createElement("div");
-      tags.className = "quiz-tags";
-
-      const s1 = document.createElement("span");
-      s1.className = "pill";
-      let stText = "未回答";
-      if (q.last_correct === true) stText = "直近正解";
-      else if (q.last_correct === false) stText = "直近不正解";
-      s1.textContent = stText;
-      tags.appendChild(s1);
-
-      const s2 = document.createElement("span");
-      s2.className = "pill";
-      s2.textContent = `解答回数: ${q.attempts ?? 0}`;
-      tags.appendChild(s2);
-
-      metaRow.appendChild(tags);
-      left.appendChild(metaRow);
-
-      const btns = document.createElement("div");
-      btns.className = "quiz-buttons";
-
-      const regenBtn = document.createElement("button");
-      regenBtn.className = "secondary";
-      regenBtn.textContent = "画像生成 / 再生成";
-      regenBtn.setAttribute("data-action", "regen");
-      regenBtn.setAttribute("data-id", q.id);
-      btns.appendChild(regenBtn);
-
-      const delBtn = document.createElement("button");
-      delBtn.className = "danger";
-      delBtn.textContent = "削除";
-      delBtn.setAttribute("data-action", "delete");
-      delBtn.setAttribute("data-id", q.id);
-      btns.appendChild(delBtn);
-
-      header.appendChild(left);
-      header.appendChild(btns);
-      item.appendChild(header);
-
-      // 解答入力＋判定
-      const ansRow = document.createElement("div");
-      ansRow.className = "answer-row";
-
-      const ansInput = document.createElement("input");
-      ansInput.type = "text";
-      ansInput.placeholder = "ここに答えを入力";
-      ansInput.setAttribute("data-answer-input", q.id);
-      ansRow.appendChild(ansInput);
-
-      const checkBtn = document.createElement("button");
-      checkBtn.className = "secondary";
-      checkBtn.textContent = "判定";
-      checkBtn.setAttribute("data-action", "check");
-      checkBtn.setAttribute("data-id", q.id);
-      ansRow.appendChild(checkBtn);
-
-      const judge = document.createElement("span");
-      judge.className = "judge-label muted";
-      judge.setAttribute("data-result", q.id);
-      judge.textContent = "";
-      ansRow.appendChild(judge);
-
-      item.appendChild(ansRow);
-
-      // 画像サムネイル表示エリア
-      const imgBox = document.createElement("div");
-      imgBox.className = "quiz-image";
-      imgBox.setAttribute("data-img-slot", q.id);
-      item.appendChild(imgBox);
-
-      listContainer.appendChild(item);
-
-      // 画像があれば最新を取得して表示
-      try {
-        // ← エンドポイントは /image**s**/latest（複数形）
-        const imgInfo = await apiFetch(`/quiz/${q.id}/images/latest`);
-        // ← フィールド名は image_url を使う
-        if (imgInfo && imgInfo.image_url) {
-          const img = document.createElement("img");
-          img.src = imgInfo.image_url;
-          imgBox.appendChild(img);
-        }
-      } catch (e) {
-        // 404（画像がまだ無い）などはここに来るので、その場合は何もしないでOK
-      }
-    }
-  }
-
-  btnReloadList.addEventListener("click", loadQuizList);
-
-  // 一覧でのボタン操作（イベント委譲）
-  listContainer.addEventListener("click", async (ev) => {
-    const btn = ev.target.closest("button[data-action]");
-    if (!btn) return;
-    const action = btn.getAttribute("data-action");
-    const id = btn.getAttribute("data-id");
-    if (!id) return;
-
-    if (action === "delete") {
-      if (!confirm(`クイズ #${id} を削除しますか？（画像も含めて削除されます）`)) return;
-      try {
-        await apiFetch(`/quiz/${id}`, { method: "DELETE" });
-        showToast(`クイズ #${id} を削除しました。`);
-        await loadQuizList();
-        await loadSlideData();
-      } catch (e) {
-        console.error(e);
-        showToast("削除に失敗しました。");
-      }
-    }
-
-    if (action === "regen") {
-      // プロンプト入力なしで画像生成APIを呼ぶ
-      try {
-        await apiFetch(`/quiz/image/generate`, {
-          method: "POST",
-          body: JSON.stringify({
-            quiz_id: Number(id)
-          })
-        });
-        showToast(`クイズ #${id} の画像を生成 / 再生成しました。`);
-        await loadQuizList(); // 最新サムネイルを反映
-      } catch (e) {
-        console.error(e);
-        showToast("画像生成に失敗しました。");
-      }
-    }
-
-    if (action === "check") {
-      const ansInput = document.querySelector(`[data-answer-input="${id}"]`);
-      const label = document.querySelector(`[data-result="${id}"]`);
-      if (!ansInput || !label) return;
-      const ans = ansInput.value.trim();
-      if (!ans) {
-        showToast("答えを入力してください。");
+      const res = await fetch(`${API_BASE_URL}/quiz/${quizId}/images/latest`);
+      if (!res.ok) {
+        // 404 など → 画像なし
+        console.log("no image yet for quiz", quizId, res.status);
         return;
       }
-      // 画像が出ているかどうか
-      const imgSlot = document.querySelector(`[data-img-slot="${id}"]`);
-      const hasImage = !!(imgSlot && imgSlot.querySelector("img"));
+      const data = await res.json();
 
-      try {
-        const res = await apiFetch(`/quiz/${id}/answer`, {
-          method: "POST",
-          body: JSON.stringify({
-            answer: ans,
-            image_shown: hasImage
-          })
-        });
-        const correct = !!res.correct;
-        label.textContent = correct ? "正解" : "不正解";
-        label.classList.remove("judge-ok", "judge-ng", "muted");
-        label.classList.add(correct ? "judge-ok" : "judge-ng");
-        await loadQuizList(); // ステータス更新のため
-      } catch (e) {
-        console.error(e);
-        label.textContent = "エラー";
-        label.classList.remove("judge-ok", "judge-ng");
-        label.classList.add("muted");
-        showToast("判定記録に失敗しました。");
+      // バックエンドのレスポンスが { "image_path": "/static/..." } という想定
+      const relPath = data.image_path || data.path || data.imageUrl;
+      if (!relPath) {
+        console.log("no image_path in response", data);
+        return;
       }
-    }
-  });
 
-  // ===== 単語帳（スライド） =====
-  const slideStatusSel = document.getElementById("slide-status");
-  const btnReloadSlide = document.getElementById("btn-reload-slide");
-  const slideCard = document.getElementById("slide-card");
-  const slideQuestion = document.getElementById("slide-question");
-  const slideAnswer = document.getElementById("slide-answer");
-  const slideEmpty = document.getElementById("slide-empty");
-  const slideIndex = document.getElementById("slide-index");
-  const btnPrev = document.getElementById("btn-prev");
-  const btnNext = document.getElementById("btn-next");
-  const btnToggleAnswer = document.getElementById("btn-toggle-answer");
-
-  let slideData = [];
-  let slidePos = 0;
-  let slideShowAnswer = false;
-
-  async function loadSlideData() {
-    try {
-      const status = slideStatusSel.value || "all";
-      const rows = await apiFetch(`/quiz/list?status=${encodeURIComponent(status)}`);
-      slideData = rows || [];
-      slidePos = 0;
-      slideShowAnswer = false;
-      renderSlide();
-    } catch (e) {
-      console.error(e);
-      showToast("スライド用データの取得に失敗しました。");
+      const imgEl = cardEl.querySelector(".word-card-image");
+      // キャッシュ対策でクエリを付ける
+      imgEl.src = `${API_BASE_URL}${relPath}?t=${Date.now()}`;
+      imgEl.style.display = "block";
+    } catch (err) {
+      console.error("failed to refresh image", err);
     }
   }
 
-  function renderSlide() {
-    if (!slideData || slideData.length === 0) {
-      slideCard.style.display = "none";
-      slideEmpty.style.display = "block";
-      slideIndex.textContent = "";
+  // 画像生成ボタンクリック時
+  async function handleGenerateImage(quizId, cardEl) {
+    try {
+      // 画像生成リクエスト
+      await apiFetch("/quiz/image/generate", {
+        method: "POST",
+        body: JSON.stringify({ quiz_id: quizId }),
+      });
+
+      // 生成できたら、最新画像を取り直して表示
+      await refreshQuizImage(quizId, cardEl);
+
+      const feedback = cardEl.querySelector(".word-card-feedback");
+      feedback.textContent = "画像を生成しました。";
+    } catch (err) {
+      console.error(err);
+      const feedback = cardEl.querySelector(".word-card-feedback");
+      feedback.textContent = "画像生成に失敗しました。";
+    }
+  }
+
+  // -----------------------------
+  // 判定 / 削除
+  // -----------------------------
+
+  async function handleCheckAnswer(quizId, cardEl) {
+    const answerInput = cardEl.querySelector(".answer-input");
+    const feedback = cardEl.querySelector(".word-card-feedback");
+    const userAnswer = answerInput.value.trim();
+
+    if (!userAnswer) {
+      feedback.textContent = "答えを入力してください。";
       return;
     }
-    slideCard.style.display = "block";
-    slideEmpty.style.display = "none";
 
-    const item = slideData[slidePos];
-    slideQuestion.textContent = item.question || "";
-    slideAnswer.textContent = item.answer || "";
-    slideAnswer.style.display = slideShowAnswer ? "block" : "none";
-
-    slideIndex.textContent = `${slidePos + 1} / ${slideData.length}`;
+    try {
+      const res = await apiFetch(`/quiz/${quizId}/answer`, {
+        method: "POST",
+        body: JSON.stringify({ answer: userAnswer, image_shown: true }),
+      });
+      const data = await res.json();
+      feedback.textContent = data.correct ? "正解！" : `不正解… 正解は「${data.correct_answer}」`;
+      // 解答回数やバッジの更新がしたければ、ここで /quiz/list を取り直す or 局所的に更新
+    } catch (err) {
+      console.error(err);
+      feedback.textContent = "判定に失敗しました。";
+    }
   }
 
-  btnReloadSlide.addEventListener("click", loadSlideData);
+  async function handleDeleteQuiz(quizId) {
+    if (!confirm("このクイズを削除しますか？")) return;
+    try {
+      await apiFetch(`/quiz/${quizId}`, { method: "DELETE" });
+      // 削除後は一覧を取り直す
+      await loadWordbookList("all");
+    } catch (err) {
+      console.error(err);
+      alert("削除に失敗しました。");
+    }
+  }
 
-  btnPrev.addEventListener("click", () => {
-    if (!slideData || slideData.length === 0) return;
-    slidePos = (slidePos - 1 + slideData.length) % slideData.length;
-    slideShowAnswer = false;
-    renderSlide();
+  // -----------------------------
+  // 初期ロード
+  // -----------------------------
+  document.addEventListener("DOMContentLoaded", () => {
+    loadWordbookList("all");
   });
-
-  btnNext.addEventListener("click", () => {
-    if (!slideData || slideData.length === 0) return;
-    slidePos = (slidePos + 1) % slideData.length;
-    slideShowAnswer = false;
-    renderSlide();
-  });
-
-  btnToggleAnswer.addEventListener("click", () => {
-    slideShowAnswer = !slideShowAnswer;
-    renderSlide();
-  });
-
-  // ===== 初期ロード =====
-  loadQuizList();
-  loadSlideData();
 </script>
+
 </body>
 </html>
