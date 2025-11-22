@@ -386,7 +386,7 @@
   <section id="panel-create" class="panel active">
     <div class="card">
       <h2 style="margin-top:0;font-size:15px;">クイズ作成</h2>
-      <p class="muted">問題文と答えを入力して「クイズを保存」。必要なら画像生成用プロンプトも追加できます。</p>
+      <p class="muted">問題文と答えを入力して「クイズを保存」。必要なら画像も一緒に生成できます。</p>
 
       <div style="margin-top:8px;">
         <label for="q-question">問題文</label>
@@ -396,11 +396,13 @@
         <label for="q-answer">答え</label>
         <input id="q-answer" type="text" placeholder="例）りんご">
       </div>
+      <!-- 以前のプロンプト入力欄（現在は未使用）
       <div style="margin-top:8px;">
         <label for="q-prompt">画像生成用プロンプト（任意で上書き／追加）</label>
         <textarea id="q-prompt" placeholder="デフォルトプロンプトに追加したい内容があれば記入"></textarea>
         <p class="muted">※空欄なら、サーバ側の定型プロンプトだけで画像を生成します。</p>
       </div>
+      -->
 
       <div class="button-row">
         <button class="primary" id="btn-save-quiz">クイズを保存</button>
@@ -423,7 +425,7 @@
       </div>
       <p class="muted" style="margin-top:4px;">
         問題だけを見て答えを入力し、「判定」で正誤を記録します。<br>
-        画像は「画像生成/再生成」ボタンから、その都度プロンプトを入力して生成できます。
+        画像は「画像生成/再生成」ボタンから生成 / 再生成できます。
       </p>
       <div class="divider"></div>
       <div id="quiz-list" class="quiz-list"></div>
@@ -525,61 +527,56 @@
   // ===== クイズ作成 =====
   const qQuestion = document.getElementById("q-question");
   const qAnswer  = document.getElementById("q-answer");
-  const qPrompt  = document.getElementById("q-prompt");
   const btnSave  = document.getElementById("btn-save-quiz");
   const btnSaveGen = document.getElementById("btn-save-and-generate");
 
   async function createQuiz({ generateImage }) {
-  const question = qQuestion.value.trim();
-  const answer   = qAnswer.value.trim();
-  const prompt   = qPrompt.value.trim();
+    const question = qQuestion.value.trim();
+    const answer   = qAnswer.value.trim();
 
-  if (!question || !answer) {
-    showToast("問題文と答えを入力してください。");
-    return;
-  }
-
-  try {
-    // まずクイズ本体を保存
-    const payload = { question, answer };
-    if (prompt) payload.prompt = prompt;
-
-    const quiz = await apiFetch("/quiz/create", {
-      method: "POST",
-      body: JSON.stringify(payload)
-    });
-
-    showToast("クイズを保存しました (ID: " + quiz.id + ")");
-    qQuestion.value = "";
-    qAnswer.value = "";
-    qPrompt.value = "";
-
-    // 「保存＋画像生成」が押されたときだけ画像生成APIを呼ぶ
-    if (generateImage) {
-      try {
-        await apiFetch("/quiz/image/generate", {
-          method: "POST",
-          body: JSON.stringify({
-            quiz_id: quiz.id,      // ← ここに保存したクイズIDを渡す
-            prompt: prompt || null // ← 追加プロンプト（空なら null）
-          })
-        });
-        showToast("クイズと画像を保存しました。");
-      } catch (e) {
-        console.error(e);
-        showToast("クイズは保存されましたが、画像生成でエラーが発生しました。");
-      }
+    if (!question || !answer) {
+      showToast("問題文と答えを入力してください。");
+      return;
     }
 
-    // 一覧とスライドを更新
-    await loadQuizList();
-    await loadSlideData();
+    try {
+      // まずクイズ本体を保存
+      const payload = { question, answer };
 
-  } catch (e) {
-    console.error(e);
-    showToast("クイズ保存中にエラーが発生しました。");
+      const quiz = await apiFetch("/quiz/create", {
+        method: "POST",
+        body: JSON.stringify(payload)
+      });
+
+      showToast("クイズを保存しました (ID: " + quiz.id + ")");
+      qQuestion.value = "";
+      qAnswer.value = "";
+
+      // 「保存＋画像生成」が押されたときだけ画像生成APIを呼ぶ
+      if (generateImage) {
+        try {
+          await apiFetch("/quiz/image/generate", {
+            method: "POST",
+            body: JSON.stringify({
+              quiz_id: quiz.id
+            })
+          });
+          showToast("クイズと画像を保存しました。");
+        } catch (e) {
+          console.error(e);
+          showToast("クイズは保存されましたが、画像生成でエラーが発生しました。");
+        }
+      }
+
+      // 一覧とスライドを更新
+      await loadQuizList();
+      await loadSlideData();
+
+    } catch (e) {
+      console.error(e);
+      showToast("クイズ保存中にエラーが発生しました。");
+    }
   }
-}
 
   btnSave.addEventListener("click", () => createQuiz({ generateImage: false }));
   btnSaveGen.addEventListener("click", () => createQuiz({ generateImage: true }));
@@ -740,22 +737,12 @@
     }
 
     if (action === "regen") {
-      // ここで一時的なテキストウィンドウ（ブラウザ標準のprompt）を出す
-      const extra = window.prompt(
-        "画像生成用に追加したいプロンプト（空欄なら定型プロンプトのみで生成します）",
-        ""
-      );
-      if (extra === null) {
-        // キャンセルされたら何もしない
-        return;
-      }
-      const trimmed = extra.trim();
+      // プロンプト入力なしで画像生成APIを呼ぶ
       try {
         await apiFetch(`/quiz/image/generate`, {
           method: "POST",
           body: JSON.stringify({
-            quiz_id: Number(id),
-            prompt: trimmed || null
+            quiz_id: Number(id)
           })
         });
         showToast(`クイズ #${id} の画像を生成 / 再生成しました。`);
