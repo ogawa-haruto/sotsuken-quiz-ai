@@ -358,7 +358,7 @@
     const tabElems = tabsEl.querySelectorAll(".tab");
     const tabPanels = {
       create: document.getElementById("tab-create"),
-      list: document.getElementById("tab-list"),
+      list: document.getElementElementById("tab-list"),
       slide: document.getElementById("tab-slide"),
     };
 
@@ -655,6 +655,7 @@
           data.path ||
           data.imagePath ||
           data.image_path ||
+          data.file_path ||   // ★ここを追加
           "";
 
         if (!rawUrl) {
