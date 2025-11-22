@@ -701,14 +701,16 @@
 
       // 画像があれば最新を取得して表示
       try {
-        const imgInfo = await apiFetch(`/quiz/${q.id}/image/latest`);
-        if (imgInfo && imgInfo.url) {
+        // ← エンドポイントは /image**s**/latest（複数形）
+        const imgInfo = await apiFetch(`/quiz/${q.id}/images/latest`);
+        // ← フィールド名は image_url を使う
+        if (imgInfo && imgInfo.image_url) {
           const img = document.createElement("img");
-          img.src = imgInfo.url;
+          img.src = imgInfo.image_url;
           imgBox.appendChild(img);
         }
       } catch (e) {
-        // 画像が無い場合などは無視
+        // 404（画像がまだ無い）などはここに来るので、その場合は何もしないでOK
       }
     }
   }
