@@ -668,9 +668,10 @@
 
         let fullUrl = rawUrl;
         if (!/^https?:\/\//i.test(rawUrl)) {
-          // 相対パスなら API_BASE_URL を付ける（スラッシュ不足も補正）
-          const sep = rawUrl.startsWith("/") ? "" : "/";
-          fullUrl = API_BASE_URL + sep + rawUrl;
+          // 相対パスなら、末尾・先頭の / を調整してから連結
+          const base = API_BASE_URL.replace(/\/$/, "");  // 末尾の / を削除
+          const rel  = rawUrl.replace(/^\//, "");        // 先頭の / を削除
+          fullUrl = `${base}/${rel}`;
         }
 
         if (forceReload) {
