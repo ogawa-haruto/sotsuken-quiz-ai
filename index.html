@@ -1,1197 +1,1215 @@
 <!DOCTYPE html>
 <html lang="ja">
-<head>
-  <meta charset="UTF-8" />
-  <title>クイズ学習ツール</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <style>
-    :root {
-      --bg: #f5f7ff;
-      --card-bg: #ffffff;
-      --accent: #2f6bff;
-      --accent-light: #e3ecff;
-      --accent-soft: #f3f6ff;
-      --danger: #ff6b81;
-      --border: #dde3f0;
-      --text-main: #1f2933;
-      --text-sub: #6b7280;
-      --radius-lg: 18px;
-      --radius-md: 12px;
-      --radius-pill: 999px;
-      --shadow-soft: 0 14px 30px rgba(15, 23, 42, 0.08);
-    }
-
-    * {
-      box-sizing: border-box;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
-        sans-serif;
-    }
-
-    body {
-      margin: 0;
-      padding: 40px 16px;
-      background: radial-gradient(circle at top, #e0ebff 0, #f5f7ff 45%, #f5f7ff 100%);
-      color: var(--text-main);
-    }
-
-    .app {
-      max-width: 1100px;
-      margin: 0 auto;
-    }
-
-    header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 24px;
-    }
-
-    header h1 {
-      font-size: 26px;
-      margin: 0;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    header h1 span.logo-dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 999px;
-      background: linear-gradient(135deg, #2f6bff, #7b5cff);
-      box-shadow: 0 0 0 4px rgba(47, 107, 255, 0.18);
-    }
-
-    header small {
-      color: var(--text-sub);
-      font-size: 13px;
-    }
-
-    /* tabs */
-
-    .tab-nav {
-      display: flex;
-      background: rgba(255, 255, 255, 0.7);
-      border-radius: var(--radius-pill);
-      padding: 4px;
-      box-shadow: var(--shadow-soft);
-      margin-bottom: 22px;
-      backdrop-filter: blur(16px);
-    }
-
-    .tab-button {
-      flex: 1;
-      border: none;
-      background: transparent;
-      padding: 10px 16px;
-      border-radius: var(--radius-pill);
-      cursor: pointer;
-      font-size: 14px;
-      color: var(--text-sub);
-      transition: all 0.18s ease;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .tab-button span.badge {
-      font-size: 10px;
-      padding: 2px 7px;
-      border-radius: 999px;
-      background: #eef2ff;
-      color: var(--accent);
-    }
-
-    .tab-button.active {
-      background: linear-gradient(135deg, #2f6bff, #7b5cff);
-      color: #fff;
-      box-shadow: 0 10px 18px rgba(37, 99, 235, 0.35);
-    }
-
-    .tab-button.active span.badge {
-      background: rgba(255, 255, 255, 0.22);
-      color: #fff;
-    }
-
-    .tab-panel {
-      display: none;
-    }
-    .tab-panel.active {
-      display: block;
-    }
-
-    /* card */
-
-    .card {
-      background: var(--card-bg);
-      border-radius: var(--radius-lg);
-      padding: 20px 20px 18px;
-      box-shadow: var(--shadow-soft);
-      margin-bottom: 20px;
-    }
-
-    .card-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 14px;
-    }
-
-    .card-header h2 {
-      font-size: 18px;
-      margin: 0;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .pill {
-      padding: 3px 10px;
-      border-radius: 999px;
-      font-size: 11px;
-      background: var(--accent-soft);
-      color: var(--accent);
-    }
-
-    label {
-      display: block;
-      font-size: 13px;
-      margin-bottom: 4px;
-      color: var(--text-sub);
-    }
-
-    textarea,
-    input[type="text"],
-    select {
-      width: 100%;
-      padding: 10px 11px;
-      border-radius: 10px;
-      border: 1px solid var(--border);
-      font-size: 14px;
-      outline: none;
-      transition: border-color 0.16s ease, box-shadow 0.16s ease;
-      background: #f9fbff;
-    }
-
-    textarea:focus,
-    input[type="text"]:focus,
-    select:focus {
-      border-color: var(--accent);
-      box-shadow: 0 0 0 3px rgba(47, 107, 255, 0.18);
-      background: #fff;
-    }
-
-    textarea {
-      resize: vertical;
-      min-height: 90px;
-    }
-
-    .field-row {
-      display: flex;
-      gap: 12px;
-      margin-bottom: 10px;
-      flex-wrap: wrap;
-    }
-
-    .field-col {
-      flex: 1;
-      min-width: 0;
-    }
-
-    .btn {
-      border-radius: var(--radius-pill);
-      border: none;
-      padding: 8px 20px;
-      font-size: 14px;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      transition: transform 0.08s ease, box-shadow 0.12s ease, background 0.18s;
-    }
-
-    .btn-primary {
-      background: linear-gradient(135deg, #2f6bff, #5278ff);
-      color: #fff;
-      box-shadow: 0 10px 16px rgba(37, 99, 235, 0.35);
-    }
-
-    .btn-outline {
-      background: #fff;
-      border: 1px solid var(--border);
-      color: var(--text-main);
-    }
-
-    .btn-danger {
-      background: #ffe5ea;
-      color: #e11d48;
-      border: 1px solid #fecdd3;
-    }
-
-    .btn-sm {
-      padding: 6px 14px;
-      font-size: 13px;
-    }
-
-    .btn:active {
-      transform: translateY(1px);
-      box-shadow: none;
-    }
-
-    .helper {
-      font-size: 12px;
-      color: var(--text-sub);
-      margin-top: 4px;
-    }
-
-    /* quiz list */
-
-    .toolbar {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      margin-bottom: 12px;
-      align-items: center;
-    }
-
-    .toolbar select {
-      max-width: 200px;
-    }
-
-    .toolbar .spacer {
-      flex: 1;
-    }
-
-    .quiz-list {
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
-      max-height: 600px;
-      overflow-y: auto;
-      padding-right: 4px;
-    }
-
-    .quiz-card {
-      border: 1px solid var(--border);
-      border-radius: var(--radius-md);
-      padding: 12px 12px 10px;
-      background: #fdfdff;
-    }
-
-    .quiz-card-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 8px;
-      gap: 6px;
-    }
-
-    .quiz-title {
-      font-size: 14px;
-      font-weight: 600;
-    }
-
-    .quiz-meta {
-      display: flex;
-      gap: 6px;
-      flex-wrap: wrap;
-      font-size: 11px;
-      color: var(--text-sub);
-    }
-
-    .badge {
-      padding: 2px 8px;
-      border-radius: 999px;
-      font-size: 11px;
-      background: #edf2ff;
-      color: var(--accent);
-    }
-
-    .badge-gray {
-      background: #f3f4f6;
-      color: #6b7280;
-    }
-
-    .badge-green {
-      background: #dcfce7;
-      color: #15803d;
-    }
-
-    .badge-red {
-      background: #fee2e2;
-      color: #b91c1c;
-    }
-
-    .quiz-body {
-      display: grid;
-      grid-template-columns: minmax(0, 1.7fr) minmax(0, 1.1fr);
-      gap: 12px;
-    }
-
-    @media (max-width: 768px) {
-      .quiz-body {
-        grid-template-columns: minmax(0, 1fr);
+  <head>
+    <meta charset="UTF-8" />
+    <title>クイズ学習ツール</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      :root {
+        --bg: #f5f7ff;
+        --card-bg: #ffffff;
+        --accent: #2563eb;
+        --accent-soft: #eef2ff;
+        --danger: #f97373;
+        --border: #e2e8f0;
+        --text-main: #111827;
+        --text-sub: #6b7280;
+        --radius-lg: 18px;
+        --radius-md: 12px;
+        --shadow-soft: 0 10px 25px rgba(15, 23, 42, 0.12);
       }
-    }
 
-    .image-panel {
-      border-radius: 12px;
-      background: var(--accent-soft);
-      padding: 6px;
-      text-align: center;
-      min-height: 120px;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      position: relative;
-    }
+      * {
+        box-sizing: border-box;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          sans-serif;
+      }
 
-    .image-panel img {
-      max-width: 100%;
-      max-height: 230px;
-      border-radius: 10px;
-      object-fit: contain;
-      background: #fff;
-      box-shadow: 0 8px 12px rgba(15, 23, 42, 0.15);
-    }
+      body {
+        margin: 0;
+        padding: 32px 16px 40px;
+        background: radial-gradient(circle at top, #dbeafe 0, #f5f7ff 55%, #f5f7ff 100%);
+        color: var(--text-main);
+      }
 
-    .image-caption {
-      font-size: 11px;
-      color: var(--text-sub);
-      margin-top: 4px;
-      text-align: left;
-    }
+      .app {
+        max-width: 1080px;
+        margin: 0 auto;
+      }
 
-    .image-empty {
-      font-size: 12px;
-      color: var(--text-sub);
-    }
+      header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        margin-bottom: 20px;
+        gap: 8px;
+      }
 
-    .prompt-inline {
-      margin-top: 6px;
-    }
+      header h1 {
+        margin: 0;
+        font-size: 24px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
 
-    .prompt-inline textarea {
-      min-height: 60px;
-      font-size: 13px;
-    }
+      header h1 span.dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 999px;
+        background: linear-gradient(135deg, #2563eb, #7c3aed);
+        box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.25);
+      }
 
-    .status-text {
-      font-size: 12px;
-      margin-top: 4px;
-    }
+      header small {
+        display: block;
+        margin-top: 4px;
+        color: var(--text-sub);
+        font-size: 12px;
+      }
 
-    .status-text.ok {
-      color: #16a34a;
-    }
+      /* tabs */
 
-    .status-text.ng {
-      color: #dc2626;
-    }
+      .tab-nav {
+        display: flex;
+        gap: 4px;
+        padding: 4px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.8);
+        box-shadow: var(--shadow-soft);
+        backdrop-filter: blur(10px);
+        margin-bottom: 18px;
+      }
 
-    /* flashcards */
+      .tab-btn {
+        flex: 1;
+        border: none;
+        border-radius: 999px;
+        background: transparent;
+        padding: 8px 10px;
+        font-size: 14px;
+        color: var(--text-sub);
+        cursor: pointer;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 6px;
+        transition: all 0.15s ease;
+      }
 
-    .flash-card {
-      border-radius: var(--radius-lg);
-      padding: 24px 22px 20px;
-      background: var(--card-bg);
-      box-shadow: var(--shadow-soft);
-      text-align: center;
-      margin-bottom: 16px;
-    }
+      .tab-btn span.badge {
+        font-size: 10px;
+        padding: 2px 6px;
+        border-radius: 999px;
+        background: #e5edff;
+        color: var(--accent);
+      }
 
-    .flash-word {
-      font-size: 28px;
-      margin-bottom: 12px;
-    }
+      .tab-btn.active {
+        background: linear-gradient(135deg, #2563eb, #7c3aed);
+        color: #ffffff;
+        box-shadow: 0 10px 18px rgba(37, 99, 235, 0.4);
+      }
 
-    .flash-answer {
-      font-size: 22px;
-      margin-bottom: 10px;
-      color: #111827;
-    }
+      .tab-btn.active span.badge {
+        background: rgba(255, 255, 255, 0.2);
+        color: #fff;
+      }
 
-    .flash-controls {
-      display: flex;
-      justify-content: center;
-      gap: 10px;
-      margin-top: 6px;
-      flex-wrap: wrap;
-    }
+      .tab-panel {
+        display: none;
+      }
 
-    .muted {
-      color: var(--text-sub);
-      font-size: 13px;
-    }
+      .tab-panel.active {
+        display: block;
+      }
 
-    /* placeholder */
+      /* card */
 
-    .placeholder-box {
-      padding: 40px 10px 30px;
-      text-align: center;
-      color: var(--text-sub);
-    }
+      .card {
+        background: var(--card-bg);
+        border-radius: var(--radius-lg);
+        padding: 18px 18px 16px;
+        box-shadow: var(--shadow-soft);
+        margin-bottom: 18px;
+      }
 
-    .placeholder-box h3 {
-      margin-bottom: 6px;
-      font-size: 18px;
-    }
+      .card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 12px;
+      }
 
-    .placeholder-box p {
-      margin: 4px 0;
-      font-size: 13px;
-    }
-  </style>
-</head>
-<body>
-  <div class="app">
-    <header>
-      <div>
-        <h1>
-          <span class="logo-dot"></span>
-          クイズ学習ツール
-        </h1>
-        <small>ラテン語単語の暗記＋画像生成対応版（実験＋普段使い）</small>
-      </div>
-    </header>
+      .card-title {
+        font-size: 17px;
+        font-weight: 600;
+      }
 
-    <!-- Tabs -->
-    <div class="tab-nav">
-      <button class="tab-button active" data-tab="create">
-        クイズ作成
-        <span class="badge">入力</span>
-      </button>
-      <button class="tab-button" data-tab="list">
-        単語帳（一覧）
-        <span class="badge">学習</span>
-      </button>
-      <button class="tab-button" data-tab="flash">
-        単語帳（フラッシュカード）
-      </button>
-      <button class="tab-button" data-tab="stats">
-        成績
-      </button>
-      <button class="tab-button" data-tab="mypage">
-        Myページ
-      </button>
-    </div>
+      .pill {
+        padding: 3px 10px;
+        border-radius: 999px;
+        font-size: 11px;
+        background: var(--accent-soft);
+        color: var(--accent);
+      }
 
-    <!-- クイズ作成 -->
-    <section id="tab-create" class="tab-panel active">
-      <div class="card">
-        <div class="card-header">
-          <h2>クイズ作成</h2>
-          <span class="pill">テキスト → クイズ登録</span>
+      label {
+        display: block;
+        font-size: 13px;
+        color: var(--text-sub);
+        margin-bottom: 4px;
+      }
+
+      input[type="text"],
+      textarea,
+      select {
+        width: 100%;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        padding: 8px 11px;
+        font-size: 14px;
+        outline: none;
+        background: #f9fafb;
+        transition: border-color 0.15s ease, box-shadow 0.15s ease,
+          background 0.15s ease;
+      }
+
+      textarea {
+        min-height: 70px;
+        border-radius: 12px;
+        resize: vertical;
+      }
+
+      input:focus,
+      textarea:focus,
+      select:focus {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.25);
+        background: #ffffff;
+      }
+
+      .field-row {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-bottom: 10px;
+      }
+
+      .field-col {
+        flex: 1;
+        min-width: 0;
+      }
+
+      .btn {
+        border-radius: 999px;
+        border: none;
+        padding: 7px 16px;
+        font-size: 13px;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        transition: transform 0.05s ease, box-shadow 0.12s ease,
+          background 0.15s ease;
+        white-space: nowrap;
+      }
+
+      .btn:active {
+        transform: translateY(1px);
+        box-shadow: none;
+      }
+
+      .btn-primary {
+        background: linear-gradient(135deg, #2563eb, #1d4ed8);
+        color: #ffffff;
+        box-shadow: 0 6px 14px rgba(37, 99, 235, 0.4);
+      }
+
+      .btn-outline {
+        background: #ffffff;
+        border: 1px solid var(--border);
+        color: var(--text-main);
+      }
+
+      .btn-danger {
+        background: #fee2e2;
+        border: 1px solid #fecaca;
+        color: #b91c1c;
+      }
+
+      .btn-sm {
+        padding: 5px 12px;
+        font-size: 12px;
+      }
+
+      .helper {
+        font-size: 12px;
+        color: var(--text-sub);
+        margin-top: 4px;
+      }
+
+      .toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: center;
+        margin-bottom: 10px;
+      }
+
+      .toolbar .spacer {
+        flex: 1;
+      }
+
+      .quiz-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        max-height: 600px;
+        overflow-y: auto;
+        padding-right: 4px;
+      }
+
+      .quiz-card {
+        border-radius: var(--radius-md);
+        border: 1px solid var(--border);
+        background: #fdfdff;
+        padding: 10px 10px 8px;
+      }
+
+      .quiz-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 6px;
+        margin-bottom: 6px;
+      }
+
+      .quiz-title {
+        font-size: 14px;
+        font-weight: 600;
+      }
+
+      .quiz-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        font-size: 11px;
+      }
+
+      .badge {
+        padding: 2px 8px;
+        border-radius: 999px;
+        background: #eef2ff;
+        color: #1d4ed8;
+      }
+
+      .badge-gray {
+        background: #f3f4f6;
+        color: #6b7280;
+      }
+
+      .badge-green {
+        background: #dcfce7;
+        color: #15803d;
+      }
+
+      .badge-red {
+        background: #fee2e2;
+        color: #b91c1c;
+      }
+
+      .quiz-body {
+        display: grid;
+        grid-template-columns: minmax(0, 1.7fr) minmax(0, 1.2fr);
+        gap: 10px;
+      }
+
+      @media (max-width: 768px) {
+        .quiz-body {
+          grid-template-columns: minmax(0, 1fr);
+        }
+      }
+
+      .image-panel {
+        border-radius: 12px;
+        background: var(--accent-soft);
+        padding: 6px;
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        justify-content: center;
+        min-height: 120px;
+      }
+
+      .image-panel img {
+        max-width: 100%;
+        max-height: 220px;
+        object-fit: contain;
+        background: #ffffff;
+        border-radius: 10px;
+        box-shadow: 0 8px 12px rgba(15, 23, 42, 0.15);
+        display: none;
+      }
+
+      .image-empty {
+        font-size: 12px;
+        color: var(--text-sub);
+        text-align: center;
+        padding: 8px 4px;
+      }
+
+      .image-caption {
+        font-size: 11px;
+        color: var(--text-sub);
+        margin-top: 4px;
+      }
+
+      .status-text {
+        font-size: 12px;
+        margin-top: 4px;
+      }
+
+      .status-text.ok {
+        color: #16a34a;
+      }
+
+      .status-text.ng {
+        color: #dc2626;
+      }
+
+      .flash-card {
+        border-radius: var(--radius-lg);
+        background: var(--card-bg);
+        box-shadow: var(--shadow-soft);
+        padding: 20px 20px 16px;
+        text-align: center;
+      }
+
+      .flash-word {
+        font-size: 26px;
+        margin-bottom: 8px;
+      }
+
+      .flash-answer {
+        font-size: 20px;
+        margin-bottom: 10px;
+      }
+
+      .flash-controls {
+        display: flex;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 6px;
+      }
+
+      .muted {
+        font-size: 12px;
+        color: var(--text-sub);
+      }
+
+      .placeholder-box {
+        text-align: center;
+        padding: 32px 8px 24px;
+        color: var(--text-sub);
+      }
+
+      .placeholder-box h3 {
+        margin: 0 0 6px;
+        font-size: 18px;
+      }
+
+      .placeholder-box p {
+        margin: 3px 0;
+        font-size: 13px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <header>
+        <div>
+          <h1>
+            <span class="dot"></span>
+            クイズ学習ツール
+          </h1>
+          <small>実験用機能＋普段使いの単語帳・画像生成をまとめた画面</small>
         </div>
+      </header>
 
-        <form id="create-form">
+      <!-- タブ -->
+      <div class="tab-nav">
+        <button class="tab-btn active" data-tab="create">
+          クイズ作成
+          <span class="badge">入力</span>
+        </button>
+        <button class="tab-btn" data-tab="list">
+          単語帳（一覧）
+          <span class="badge">暗記カード</span>
+        </button>
+        <button class="tab-btn" data-tab="flash">
+          単語帳（フラッシュカード）
+        </button>
+        <button class="tab-btn" data-tab="stats">
+          成績
+        </button>
+        <button class="tab-btn" data-tab="mypage">
+          Myページ
+        </button>
+      </div>
+
+      <!-- クイズ作成 -->
+      <section id="tab-panel-create" class="tab-panel active">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">クイズ作成</div>
+            <span class="pill">実験用の問題もここから登録</span>
+          </div>
+
           <div class="field-row">
             <div class="field-col">
-              <label for="question-input">問題文（例：Equus は日本語で？）</label>
-              <textarea id="question-input" required></textarea>
+              <label for="question-input">問題文</label>
+              <textarea
+                id="question-input"
+                placeholder="例：Equus は日本語で？"
+              ></textarea>
             </div>
           </div>
+
           <div class="field-row">
             <div class="field-col">
               <label for="answer-input">答え</label>
-              <input id="answer-input" type="text" required />
+              <input
+                type="text"
+                id="answer-input"
+                placeholder="例：馬"
+              />
             </div>
           </div>
 
           <div class="field-row">
             <div class="field-col">
-              <label for="category-input">分類（例：ラテン語・英単語 など）</label>
-              <input id="category-input" type="text" placeholder="例：ラテン語" />
+              <label for="category-input">分類</label>
+              <input
+                type="text"
+                id="category-input"
+                placeholder="例：ラテン語、英単語 など（フロントのみで管理）"
+              />
             </div>
             <div class="field-col">
-              <label for="subject-input">科目 / グループ名</label>
-              <input id="subject-input" type="text" placeholder="例：古典・英語表現 など" />
+              <label for="subject-input">科目 / セット名</label>
+              <input
+                type="text"
+                id="subject-input"
+                placeholder="例：セットA、古典 など"
+              />
             </div>
           </div>
 
-          <div style="display:flex;align-items:center;gap:10px;margin-top:8px;">
-            <button type="submit" class="btn btn-primary">
-              クイズを追加
-            </button>
+          <div style="display: flex; gap: 10px; align-items: center; margin-top: 6px">
+            <button id="create-btn" class="btn btn-primary">クイズを保存</button>
             <span id="create-status" class="helper"></span>
           </div>
           <p class="helper">
-            ※ 分類・科目は今のところブラウザ内（localStorage）で管理しています。
-            バックエンドには影響しません。
+            ※ 分類・科目は localStorage で紐づけています（DB にはまだ保存していません）。
           </p>
-        </form>
-      </div>
-    </section>
-
-    <!-- 単語帳 一覧 -->
-    <section id="tab-list" class="tab-panel">
-      <div class="card">
-        <div class="card-header">
-          <h2>単語帳（一覧）</h2>
-          <span class="pill">クイズの解答＆画像生成</span>
         </div>
+      </section>
 
-        <div class="toolbar">
-          <div>
-            <label for="status-filter">対象</label>
-            <select id="status-filter">
-              <option value="all">すべて</option>
-              <option value="unanswered_only">未回答のみ</option>
-              <option value="incorrect_only">直近不正解のみ</option>
-            </select>
+      <!-- 単語帳（一覧） -->
+      <section id="tab-panel-list" class="tab-panel">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">単語帳（一覧）</div>
+            <span class="pill">暗記カード形式で解答＋画像生成</span>
           </div>
-          <div>
-            <label for="sort-key">並び替え</label>
-            <select id="sort-key">
-              <option value="created_desc">作成日時：新しい順</option>
-              <option value="created_asc">作成日時：古い順</option>
-              <option value="category">分類順</option>
-              <option value="subject">科目順</option>
-              <option value="question">問題文順</option>
-            </select>
+
+          <div class="toolbar">
+            <div>
+              <label for="status-filter">対象</label>
+              <select id="status-filter">
+                <option value="all">すべて</option>
+                <option value="unanswered_only">未回答のみ</option>
+                <option value="incorrect_only">直近不正解のみ</option>
+              </select>
+            </div>
+            <div>
+              <label for="sort-key">並び替え</label>
+              <select id="sort-key">
+                <option value="created_desc">作成日時：新しい順</option>
+                <option value="created_asc">作成日時：古い順</option>
+                <option value="category">分類順</option>
+                <option value="subject">科目順</option>
+                <option value="question">問題文順</option>
+              </select>
+            </div>
+            <div class="spacer"></div>
+            <button id="reload-list" class="btn btn-outline btn-sm">
+              再読み込み
+            </button>
           </div>
-          <div class="spacer"></div>
-          <button id="reload-list" class="btn btn-outline btn-sm">
-            再読み込み
-          </button>
-        </div>
 
-        <div id="quiz-list" class="quiz-list">
-          <!-- JS で挿入 -->
+          <div id="quiz-list" class="quiz-list"></div>
         </div>
-      </div>
-    </section>
+      </section>
 
-    <!-- フラッシュカード -->
-    <section id="tab-flash" class="tab-panel">
-      <div class="card">
-        <div class="card-header">
-          <h2>単語帳（フラッシュカード）</h2>
-          <span class="pill">問題と答えを交互に表示</span>
-        </div>
-
-        <div class="toolbar">
-          <div>
-            <label for="flash-sort-key">並び替え</label>
-            <select id="flash-sort-key">
-              <option value="created_desc">作成日時：新しい順</option>
-              <option value="created_asc">作成日時：古い順</option>
-              <option value="category">分類順</option>
-              <option value="subject">科目順</option>
-              <option value="question">問題文順</option>
-            </select>
+      <!-- 単語帳（フラッシュカード） -->
+      <section id="tab-panel-flash" class="tab-panel">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">単語帳（フラッシュカード）</div>
+            <span class="pill">1問ずつ表示して自己チェック</span>
           </div>
-          <div class="spacer"></div>
-          <button id="reload-flash" class="btn btn-outline btn-sm">
-            再読み込み
-          </button>
+
+          <div class="toolbar">
+            <div>
+              <label for="flash-sort-key">並び替え</label>
+              <select id="flash-sort-key">
+                <option value="created_desc">作成日時：新しい順</option>
+                <option value="created_asc">作成日時：古い順</option>
+                <option value="category">分類順</option>
+                <option value="subject">科目順</option>
+                <option value="question">問題文順</option>
+              </select>
+            </div>
+            <div class="spacer"></div>
+            <button id="reload-flash" class="btn btn-outline btn-sm">
+              再読み込み
+            </button>
+          </div>
+
+          <div id="flash-container"></div>
         </div>
+      </section>
 
-        <div id="flash-container">
-          <!-- flashcard inserted here -->
+      <!-- 成績 -->
+      <section id="tab-panel-stats" class="tab-panel">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">成績</div>
+            <span class="pill">ログ・正答率など（枠だけ用意）</span>
+          </div>
+          <div class="placeholder-box">
+            <h3>成績ページはこれから作り込む前提で枠だけ用意してあります。</h3>
+            <p>・日ごとの解答数グラフ</p>
+            <p>・分類／科目ごとの正答率</p>
+            <p>・直近 N 問の正答率 など</p>
+            <p class="muted">バックエンド仕様が固まったら、一緒に中身を詰めていこう。</p>
+          </div>
         </div>
-      </div>
-    </section>
+      </section>
 
-    <!-- 成績 -->
-    <section id="tab-stats" class="tab-panel">
-      <div class="card">
-        <div class="card-header">
-          <h2>成績</h2>
-          <span class="pill">学習ログ・正答率（準備中）</span>
+      <!-- Myページ -->
+      <section id="tab-panel-mypage" class="tab-panel">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Myページ</div>
+            <span class="pill">個人設定・実験メモなど（枠だけ）</span>
+          </div>
+          <div class="placeholder-box">
+            <h3>Myページもスペースだけ確保してあります。</h3>
+            <p>・お気に入り単語帳セット</p>
+            <p>・画像生成のデフォルト設定</p>
+            <p>・実験条件メモ などを想定。</p>
+            <p class="muted">必要な項目が固まったら、その内容に合わせて UI を作り込もう。</p>
+          </div>
         </div>
-        <div class="placeholder-box">
-          <h3>成績ページはこれから作り込む枠だけ用意。</h3>
-          <p>・日ごとの解答数グラフ</p>
-          <p>・分類／科目ごとの正答率</p>
-          <p>・直近○問の正解／不正解　などをここに載せる想定。</p>
-          <p class="muted">バックエンド側の仕様が固まったら、中身を詰る。</p>
-        </div>
-      </div>
-    </section>
+      </section>
+    </div>
 
-    <!-- Myページ -->
-    <section id="tab-mypage" class="tab-panel">
-      <div class="card">
-        <div class="card-header">
-          <h2>Myページ</h2>
-          <span class="pill">ユーザー設定／実験用メモなど（準備中）</span>
-        </div>
-        <div class="placeholder-box">
-          <h3>Myページもひとまず枠だけ。</h3>
-          <p>・お気に入りセット</p>
-          <p>・画像生成のデフォルト設定やモデルの変更</p>
-          <p class="muted">必要な項目が固まったら、中身を詰る。</p>
-        </div>
-      </div>
-    </section>
-  </div>
+    <script>
+      // ====== 設定 ======
+      const API_BASE =
+        window.location.hostname === "localhost" ||
+        window.location.hostname.startsWith("127.")
+          ? "http://127.0.0.1:8000"
+          : "https://sotsuken-quiz-ai.onrender.com";
 
-  <script>
-    // ====== 設定 ======
-    const API_BASE = window.location.hostname === "localhost" || window.location.hostname.startsWith("127.")
-      ? "http://127.0.0.1:8000"
-      : "https://sotsuken-quiz-ai.onrender.com";
+      const X_TOKEN_VALUE = ""; // ★必要ならここに X-Token を入れる
 
-    const X_TOKEN_VALUE = ""; // 必要ならここに X-Token を入れる
+      // 分類・科目のメタ情報を保持（localStorage）
+      const META_STORAGE_KEY = "quiz_meta_v1";
 
-    // localStorage に保存するメタ情報
-    const META_STORAGE_KEY = "quiz_meta_v1"; // { [id]: { category, subject } }
-
-    function loadQuizMeta() {
-      try {
-        return JSON.parse(localStorage.getItem(META_STORAGE_KEY) || "{}");
-      } catch {
-        return {};
+      function loadQuizMeta() {
+        try {
+          return JSON.parse(localStorage.getItem(META_STORAGE_KEY) || "{}");
+        } catch {
+          return {};
+        }
       }
-    }
 
-    function saveQuizMetaFor(id, meta) {
-      const all = loadQuizMeta();
-      all[id] = { ...(all[id] || {}), ...meta };
-      localStorage.setItem(META_STORAGE_KEY, JSON.stringify(all));
-    }
+      function saveQuizMetaFor(id, meta) {
+        const all = loadQuizMeta();
+        all[id] = { ...(all[id] || {}), ...meta };
+        localStorage.setItem(META_STORAGE_KEY, JSON.stringify(all));
+      }
 
-    // ====== 共通 fetch ======
-    async function apiFetch(path, options = {}) {
-      const url = API_BASE.replace(/\/+$/, "") + path;
+      function deleteQuizMeta(id) {
+        const all = loadQuizMeta();
+        delete all[id];
+        localStorage.setItem(META_STORAGE_KEY, JSON.stringify(all));
+      }
 
-      const headers = {
-        "Content-Type": "application/json",
-        ...(options.headers || {})
+      // ====== 共通 fetch ======
+      async function apiFetch(path, options = {}) {
+        const url = API_BASE.replace(/\/+$/, "") + path;
+        const headers = {
+          ...(options.headers || {}),
+        };
+        if (!(options.body instanceof FormData)) {
+          headers["Content-Type"] = "application/json";
+        }
+        if (X_TOKEN_VALUE) {
+          headers["X-Token"] = X_TOKEN_VALUE;
+        }
+
+        const res = await fetch(url, { ...options, headers });
+
+        if (!res.ok) {
+          let detail = "";
+          try {
+            const data = await res.json();
+            detail = data.detail || JSON.stringify(data);
+          } catch {
+            detail = res.statusText;
+          }
+          console.error("API error", res.status, detail);
+          throw new Error(`API error ${res.status}`);
+        }
+        if (res.status === 204) return null;
+        return res.json();
+      }
+
+      // ====== タブ切り替え ======
+      const tabButtons = document.querySelectorAll(".tab-btn");
+      const tabPanels = {
+        create: document.getElementById("tab-panel-create"),
+        list: document.getElementById("tab-panel-list"),
+        flash: document.getElementById("tab-panel-flash"),
+        stats: document.getElementById("tab-panel-stats"),
+        mypage: document.getElementById("tab-panel-mypage"),
       };
-      if (X_TOKEN_VALUE) {
-        headers["X-Token"] = X_TOKEN_VALUE;
-      }
 
-      const res = await fetch(url, { ...options, headers });
-      if (!res.ok) {
-        const text = await res.text();
-        console.error("API error", res.status, text);
-        throw new Error(`API error ${res.status}`);
-      }
-      if (res.status === 204) return null;
-      return await res.json();
-    }
-
-    // ====== タブ切り替え ======
-    const tabButtons = document.querySelectorAll(".tab-button");
-    const tabPanels = {
-      create: document.getElementById("tab-create"),
-      list: document.getElementById("tab-list"),
-      flash: document.getElementById("tab-flash"),
-      stats: document.getElementById("tab-stats"),
-      mypage: document.getElementById("tab-mypage")
-    };
-
-    tabButtons.forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const tab = btn.dataset.tab;
-        tabButtons.forEach((b) => b.classList.toggle("active", b === btn));
-        Object.entries(tabPanels).forEach(([key, el]) => {
-          el.classList.toggle("active", key === tab);
+      tabButtons.forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const tab = btn.dataset.tab;
+          tabButtons.forEach((b) => b.classList.toggle("active", b === btn));
+          Object.entries(tabPanels).forEach(([key, panel]) => {
+            panel.classList.toggle("active", key === tab);
+          });
+          if (tab === "list") {
+            loadQuizList();
+          } else if (tab === "flash") {
+            loadFlashcards();
+          }
         });
-        if (tab === "list") {
-          loadQuizList();
-        } else if (tab === "flash") {
-          loadFlashcards();
+      });
+
+      // ====== クイズ作成 ======
+      const createBtn = document.getElementById("create-btn");
+      const createStatus = document.getElementById("create-status");
+
+      createBtn.addEventListener("click", async () => {
+        const q = document.getElementById("question-input").value.trim();
+        const a = document.getElementById("answer-input").value.trim();
+        const cat = document.getElementById("category-input").value.trim();
+        const subj = document.getElementById("subject-input").value.trim();
+
+        if (!q || !a) {
+          createStatus.textContent = "問題文と答えは必須です。";
+          return;
+        }
+
+        createStatus.textContent = "保存中…";
+
+        try {
+          const data = await apiFetch("/quiz/create", {
+            method: "POST",
+            body: JSON.stringify({ question: q, answer: a }),
+          });
+
+          if (data && data.id != null) {
+            saveQuizMetaFor(data.id, { category: cat, subject: subj });
+          }
+
+          createStatus.textContent = `登録しました（ID: ${data.id}）。`;
+          document.getElementById("question-input").value = "";
+          document.getElementById("answer-input").value = "";
+          document.getElementById("category-input").value = "";
+          document.getElementById("subject-input").value = "";
+        } catch (e) {
+          console.error(e);
+          createStatus.textContent = "登録に失敗しました。";
         }
       });
-    });
 
-    // ====== クイズ作成 ======
-    const createForm = document.getElementById("create-form");
-    const createStatus = document.getElementById("create-status");
+      // ====== 単語帳（一覧） ======
+      const quizListEl = document.getElementById("quiz-list");
+      const statusFilterEl = document.getElementById("status-filter");
+      const sortKeyEl = document.getElementById("sort-key");
+      document
+        .getElementById("reload-list")
+        .addEventListener("click", () => loadQuizList());
+      statusFilterEl.addEventListener("change", () => loadQuizList());
+      sortKeyEl.addEventListener("change", () => renderQuizList());
 
-    createForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      createStatus.textContent = "登録中...";
+      let currentQuizList = [];
 
-      const question = document.getElementById("question-input").value.trim();
-      const answer = document.getElementById("answer-input").value.trim();
-      const category = document.getElementById("category-input").value.trim();
-      const subject = document.getElementById("subject-input").value.trim();
+      async function loadQuizList() {
+        quizListEl.innerHTML = "読み込み中…";
 
-      if (!question || !answer) {
-        createStatus.textContent = "問題文と答えは必須です。";
-        return;
-      }
-
-      try {
-        const body = { question, answer };
-        const data = await apiFetch("/quiz/create", {
-          method: "POST",
-          body: JSON.stringify(body)
-        });
-
-        // 分類と科目は localStorage に紐づける
-        if (data && data.id != null) {
-          saveQuizMetaFor(data.id, { category, subject });
-        }
-
-        createStatus.textContent = `登録しました（ID: ${data.id}）。`;
-        createForm.reset();
-      } catch (err) {
-        console.error(err);
-        createStatus.textContent = "登録に失敗しました。コンソールを確認してください。";
-      }
-    });
-
-    // ====== 単語帳（一覧） ======
-    const quizListEl = document.getElementById("quiz-list");
-    const statusFilterEl = document.getElementById("status-filter");
-    const sortKeyEl = document.getElementById("sort-key");
-    document.getElementById("reload-list").addEventListener("click", () => loadQuizList());
-
-    let currentQuizList = [];
-
-    async function loadQuizList() {
-      quizListEl.innerHTML = "読み込み中...";
-      const status = statusFilterEl.value || "all";
-
-      try {
+        const status = statusFilterEl.value || "all";
         const params = new URLSearchParams({
           status,
           order: "created_desc",
           offset: "0",
-          limit: "200"
+          limit: "200",
         });
-        const data = await apiFetch(`/quiz/list?${params.toString()}`);
-        const meta = loadQuizMeta();
-        currentQuizList = (data || []).map((q) => ({
-          ...q,
-          category: (meta[q.id] && meta[q.id].category) || "未分類",
-          subject: (meta[q.id] && meta[q.id].subject) || "未設定"
-        }));
-        renderQuizList();
-      } catch (err) {
-        console.error(err);
-        quizListEl.innerHTML = "<p>クイズ一覧の取得に失敗しました。</p>";
-      }
-    }
 
-    function sortQuizzes(list, sortKey) {
-      const arr = [...list];
-      const collator = new Intl.Collator("ja");
-      switch (sortKey) {
-        case "created_asc":
-          arr.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
-          break;
-        case "category":
-          arr.sort((a, b) => collator.compare(a.category, b.category));
-          break;
-        case "subject":
-          arr.sort((a, b) => collator.compare(a.subject, b.subject));
-          break;
-        case "question":
-          arr.sort((a, b) => collator.compare(a.question, b.question));
-          break;
-        case "created_desc":
-        default:
-          arr.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-      }
-      return arr;
-    }
-
-    sortKeyEl.addEventListener("change", () => renderQuizList());
-    statusFilterEl.addEventListener("change", () => loadQuizList());
-
-    function renderQuizList() {
-      if (!currentQuizList.length) {
-        quizListEl.innerHTML = "<p class='muted'>クイズがまだありません。</p>";
-        return;
-      }
-      const sortKey = sortKeyEl.value || "created_desc";
-      const list = sortQuizzes(currentQuizList, sortKey);
-
-      quizListEl.innerHTML = "";
-      list.forEach((quiz) => {
-        const card = document.createElement("div");
-        card.className = "quiz-card";
-        card.dataset.id = quiz.id;
-
-        const header = document.createElement("div");
-        header.className = "quiz-card-header";
-
-        const left = document.createElement("div");
-        const title = document.createElement("div");
-        title.className = "quiz-title";
-        title.textContent = `#${quiz.id} ${quiz.question}`;
-        left.appendChild(title);
-
-        const metaLine = document.createElement("div");
-        metaLine.className = "quiz-meta";
-        const cat = document.createElement("span");
-        cat.className = "badge";
-        cat.textContent = `分類: ${quiz.category}`;
-        const subj = document.createElement("span");
-        subj.className = "badge";
-        subj.textContent = `科目: ${quiz.subject}`;
-        const attempt = document.createElement("span");
-        attempt.className = "badge-gray badge";
-        const n = quiz.attempts || 0;
-        attempt.textContent = `解答回数: ${n}`;
-        metaLine.appendChild(cat);
-        metaLine.appendChild(subj);
-        metaLine.appendChild(attempt);
-        left.appendChild(metaLine);
-
-        header.appendChild(left);
-
-        const statusBadge = document.createElement("span");
-        statusBadge.className = "badge-gray badge";
-        if (quiz.last_correct === true) {
-          statusBadge.className = "badge badge-green";
-          statusBadge.textContent = "直近: 正解";
-        } else if (quiz.last_correct === false) {
-          statusBadge.className = "badge badge-red";
-          statusBadge.textContent = "直近: 不正解";
-        } else {
-          statusBadge.textContent = "直近: 状態不明";
+        try {
+          const data = await apiFetch(`/quiz/list?${params.toString()}`);
+          const meta = loadQuizMeta();
+          currentQuizList = (data || []).map((q) => ({
+            ...q,
+            category: (meta[q.id] && meta[q.id].category) || "未分類",
+            subject: (meta[q.id] && meta[q.id].subject) || "未設定",
+          }));
+          renderQuizList();
+        } catch (e) {
+          console.error(e);
+          quizListEl.innerHTML =
+            "<p class='muted'>クイズ一覧の取得に失敗しました。</p>";
         }
-        header.appendChild(statusBadge);
+      }
 
-        card.appendChild(header);
+      function sortQuizzes(list, key) {
+        const arr = [...list];
+        const collator = new Intl.Collator("ja");
+        switch (key) {
+          case "created_asc":
+            arr.sort(
+              (a, b) => new Date(a.created_at) - new Date(b.created_at)
+            );
+            break;
+          case "category":
+            arr.sort((a, b) => collator.compare(a.category, b.category));
+            break;
+          case "subject":
+            arr.sort((a, b) => collator.compare(a.subject, b.subject));
+            break;
+          case "question":
+            arr.sort((a, b) => collator.compare(a.question, b.question));
+            break;
+          case "created_desc":
+          default:
+            arr.sort(
+              (a, b) => new Date(b.created_at) - new Date(a.created_at)
+            );
+            break;
+        }
+        return arr;
+      }
 
-        const body = document.createElement("div");
-        body.className = "quiz-body";
+      function renderQuizList() {
+        if (!currentQuizList.length) {
+          quizListEl.innerHTML =
+            "<p class='muted'>クイズがまだありません。</p>";
+          return;
+        }
 
-        // 左側：回答欄
-        const answerArea = document.createElement("div");
-        const label = document.createElement("label");
-        label.textContent = "答えを入力";
-        answerArea.appendChild(label);
+        const sortKey = sortKeyEl.value || "created_desc";
+        const list = sortQuizzes(currentQuizList, sortKey);
 
-        const input = document.createElement("input");
-        input.type = "text";
-        input.placeholder = "ここに答えを入力";
-        input.dataset.quizId = quiz.id;
-        input.style.marginBottom = "6px";
-        answerArea.appendChild(input);
+        quizListEl.innerHTML = "";
+        list.forEach((quiz) => {
+          const card = document.createElement("div");
+          card.className = "quiz-card";
+          card.dataset.id = quiz.id;
 
-        const btnRow = document.createElement("div");
-        btnRow.style.display = "flex";
-        btnRow.style.gap = "8px";
-        btnRow.style.flexWrap = "wrap";
+          const head = document.createElement("div");
+          head.className = "quiz-header";
 
-        const genBtn = document.createElement("button");
-        genBtn.type = "button";
-        genBtn.className = "btn btn-outline btn-sm";
-        genBtn.textContent = "画像生成 / 再生成";
-        genBtn.addEventListener("click", () => openPromptAndGenerate(quiz.id));
+          const left = document.createElement("div");
+          const title = document.createElement("div");
+          title.className = "quiz-title";
+          title.textContent = `#${quiz.id} ${quiz.question}`;
+          left.appendChild(title);
 
-        const judgeBtn = document.createElement("button");
-        judgeBtn.type = "button";
-        judgeBtn.className = "btn btn-primary btn-sm";
-        judgeBtn.textContent = "判定";
-        judgeBtn.addEventListener("click", () => {
-          const answer = input.value.trim();
-          submitAnswer(quiz.id, answer, card);
-        });
+          const metaLine = document.createElement("div");
+          metaLine.className = "quiz-meta";
+          const cat = document.createElement("span");
+          cat.className = "badge";
+          cat.textContent = `分類: ${quiz.category}`;
+          const subj = document.createElement("span");
+          subj.className = "badge";
+          subj.textContent = `科目: ${quiz.subject}`;
+          const attempts = document.createElement("span");
+          attempts.className = "badge badge-gray";
+          attempts.textContent = `解答回数: ${quiz.attempts || 0}`;
+          metaLine.appendChild(cat);
+          metaLine.appendChild(subj);
+          metaLine.appendChild(attempts);
+          left.appendChild(metaLine);
+          head.appendChild(left);
 
-        const delBtn = document.createElement("button");
-        delBtn.type = "button";
-        delBtn.className = "btn btn-danger btn-sm";
-        delBtn.textContent = "削除";
-        delBtn.addEventListener("click", () => {
-          if (confirm(`ID ${quiz.id} を削除しますか？`)) {
-            deleteQuiz(quiz.id);
+          const statusBadge = document.createElement("span");
+          statusBadge.className = "badge badge-gray";
+          if (quiz.last_correct === true) {
+            statusBadge.className = "badge badge-green";
+            statusBadge.textContent = "直近: 正解";
+          } else if (quiz.last_correct === false) {
+            statusBadge.className = "badge badge-red";
+            statusBadge.textContent = "直近: 不正解";
+          } else {
+            statusBadge.textContent = "直近: 状態不明";
           }
+          head.appendChild(statusBadge);
+
+          card.appendChild(head);
+
+          const body = document.createElement("div");
+          body.className = "quiz-body";
+
+          // 左：答え入力／ボタン
+          const answerCol = document.createElement("div");
+          const ansLabel = document.createElement("label");
+          ansLabel.textContent = "答えを入力";
+          answerCol.appendChild(ansLabel);
+
+          const ansInput = document.createElement("input");
+          ansInput.type = "text";
+          ansInput.placeholder = "ここに答えを入力";
+          ansInput.style.marginBottom = "6px";
+          answerCol.appendChild(ansInput);
+
+          const btnRow = document.createElement("div");
+          btnRow.style.display = "flex";
+          btnRow.style.gap = "6px";
+          btnRow.style.flexWrap = "wrap";
+
+          const imgBtn = document.createElement("button");
+          imgBtn.type = "button";
+          imgBtn.className = "btn btn-outline btn-sm";
+          imgBtn.textContent = "画像生成 / 再生成";
+
+          const judgeBtn = document.createElement("button");
+          judgeBtn.type = "button";
+          judgeBtn.className = "btn btn-primary btn-sm";
+          judgeBtn.textContent = "判定";
+
+          const delBtn = document.createElement("button");
+          delBtn.type = "button";
+          delBtn.className = "btn btn-danger btn-sm";
+          delBtn.textContent = "削除";
+
+          btnRow.appendChild(imgBtn);
+          btnRow.appendChild(judgeBtn);
+          btnRow.appendChild(delBtn);
+          answerCol.appendChild(btnRow);
+
+          const statusText = document.createElement("div");
+          statusText.className = "status-text";
+          answerCol.appendChild(statusText);
+
+          body.appendChild(answerCol);
+
+          // 右：画像
+          const imgCol = document.createElement("div");
+          imgCol.className = "image-panel";
+
+          const img = document.createElement("img");
+          const empty = document.createElement("div");
+          empty.className = "image-empty";
+          empty.textContent = "画像はまだ生成されていません。";
+
+          const caption = document.createElement("div");
+          caption.className = "image-caption";
+
+          const promptBox = document.createElement("textarea");
+          promptBox.placeholder =
+            "画像生成時の追加プロンプト（任意）。空欄ならデフォルトプロンプトで生成。";
+          promptBox.style.marginTop = "6px";
+          promptBox.style.fontSize = "12px";
+
+          imgCol.appendChild(img);
+          imgCol.appendChild(empty);
+          imgCol.appendChild(caption);
+          imgCol.appendChild(promptBox);
+
+          body.appendChild(imgCol);
+          card.appendChild(body);
+
+          // ハンドルを保存
+          card._statusText = statusText;
+          card._image = img;
+          card._imageEmpty = empty;
+          card._caption = caption;
+          card._promptArea = promptBox;
+
+          quizListEl.appendChild(card);
+
+          // イベント
+          judgeBtn.addEventListener("click", () =>
+            submitAnswer(quiz.id, ansInput.value.trim(), card)
+          );
+          delBtn.addEventListener("click", () => {
+            if (confirm(`#${quiz.id} を削除しますか？`)) {
+              deleteQuiz(quiz.id);
+            }
+          });
+          imgBtn.addEventListener("click", () =>
+            openPromptAndGenerate(quiz, card)
+          );
+
+          // 既存画像があれば読み込み
+          loadLatestImageForQuiz(quiz.id, card);
         });
-
-        btnRow.appendChild(genBtn);
-        btnRow.appendChild(judgeBtn);
-        btnRow.appendChild(delBtn);
-        answerArea.appendChild(btnRow);
-
-        const statusText = document.createElement("div");
-        statusText.className = "status-text";
-        answerArea.appendChild(statusText);
-
-        body.appendChild(answerArea);
-
-        // 右側：画像
-        const imageArea = document.createElement("div");
-        imageArea.className = "image-panel";
-
-        const img = document.createElement("img");
-        img.style.display = "none";
-        imageArea.appendChild(img);
-
-        const empty = document.createElement("div");
-        empty.className = "image-empty";
-        empty.textContent = "画像はまだ生成されていません。";
-        imageArea.appendChild(empty);
-
-        const caption = document.createElement("div");
-        caption.className = "image-caption";
-        imageArea.appendChild(caption);
-
-        const promptBox = document.createElement("div");
-        promptBox.className = "prompt-inline";
-        const promptLabel = document.createElement("div");
-        promptLabel.className = "helper";
-        promptLabel.textContent = "画像生成時の追加プロンプト（任意）";
-        const promptArea = document.createElement("textarea");
-        promptArea.placeholder = "例：背景に森を入れる、写真風など。空欄ならシステムのデフォルトで生成。";
-        promptArea.dataset.quizId = quiz.id;
-        promptBox.appendChild(promptLabel);
-        promptBox.appendChild(promptArea);
-        imageArea.appendChild(promptBox);
-
-        body.appendChild(imageArea);
-        card.appendChild(body);
-
-        // 状態保存
-        card._statusText = statusText;
-        card._image = img;
-        card._imageEmpty = empty;
-        card._caption = caption;
-        card._promptArea = promptArea;
-
-        quizListEl.appendChild(card);
-
-        // 既に画像があるか確認
-        loadLatestImageForQuiz(quiz.id, card);
-      });
-    }
-
-    async function submitAnswer(quizId, answer, cardEl) {
-      if (!answer) {
-        cardEl._statusText.textContent = "答えを入力してください。";
-        cardEl._statusText.classList.remove("ok", "ng");
-        return;
       }
-      cardEl._statusText.textContent = "判定中...";
 
-      try {
-        const data = await apiFetch(`/quiz/${quizId}/answer`, {
-          method: "POST",
-          body: JSON.stringify({ answer, image_shown: !!cardEl._image.src })
-        });
-        const correct = data.correct === true;
-        cardEl._statusText.textContent = correct ? "正解です！" : "不正解です。";
-        cardEl._statusText.classList.toggle("ok", correct);
-        cardEl._statusText.classList.toggle("ng", !correct);
-        loadQuizList(); // 回数や直近状態更新のため
-      } catch (err) {
-        console.error(err);
-        cardEl._statusText.textContent = "判定に失敗しました。";
-        cardEl._statusText.classList.remove("ok", "ng");
+      async function submitAnswer(quizId, answer, card) {
+        if (!answer) {
+          card._statusText.textContent = "答えを入力してください。";
+          card._statusText.classList.remove("ok", "ng");
+          return;
+        }
+        card._statusText.textContent = "判定中…";
+        card._statusText.classList.remove("ok", "ng");
+
+        try {
+          const data = await apiFetch(`/quiz/${quizId}/answer`, {
+            method: "POST",
+            body: JSON.stringify({ answer, image_shown: !!card._image.src }),
+          });
+          const correct = data.correct === true;
+          card._statusText.textContent = correct ? "正解です！" : "不正解です。";
+          card._statusText.classList.toggle("ok", correct);
+          card._statusText.classList.toggle("ng", !correct);
+
+          // attempts / last_correct 更新のために一覧リロード
+          loadQuizList();
+        } catch (e) {
+          console.error(e);
+          card._statusText.textContent = "判定に失敗しました。";
+          card._statusText.classList.remove("ok", "ng");
+        }
       }
-    }
 
-    async function deleteQuiz(quizId) {
-      try {
-        await apiFetch(`/quiz/${quizId}`, { method: "DELETE" });
-        const meta = loadQuizMeta();
-        delete meta[quizId];
-        localStorage.setItem(META_STORAGE_KEY, JSON.stringify(meta));
-        loadQuizList();
-      } catch (err) {
-        console.error(err);
-        alert("削除に失敗しました。");
+      async function deleteQuiz(quizId) {
+        try {
+          await apiFetch(`/quiz/${quizId}`, { method: "DELETE" });
+          deleteQuizMeta(quizId);
+          loadQuizList();
+        } catch (e) {
+          console.error(e);
+          alert("削除に失敗しました。");
+        }
       }
-    }
 
-    function resolveImageUrl(data) {
-      let rawUrl =
-        data.url ||
-        data.image_url ||
-        data.path ||
-        data.imagePath ||
-        data.image_path ||
-        data.file_path ||
-        data.filepath ||
-        "";
-      if (!rawUrl) return "";
-      if (rawUrl.startsWith("http")) {
-        return rawUrl;
+      function resolveImageUrl(data) {
+        let rawUrl =
+          data.url ||
+          data.image_url ||
+          data.path ||
+          data.imagePath ||
+          data.image_path ||
+          data.file_path ||
+          data.filepath ||
+          "";
+        if (!rawUrl) return "";
+        if (/^https?:\/\//i.test(rawUrl)) return rawUrl;
+
+        const base = API_BASE.replace(/\/+$/, "");
+        const rel = rawUrl.replace(/^\/+/, "");
+        return base + "/" + rel;
       }
-      return API_BASE.replace(/\/+$/, "") + "/" + rawUrl.replace(/^\/+/, "");
-    }
 
-    async function loadLatestImageForQuiz(quizId, cardEl) {
-      try {
-        const data = await apiFetch(`/quiz/${quizId}/images/latest`);
-        const url = resolveImageUrl(data);
-        if (url) {
-          cardEl._image.src = url;
-          cardEl._image.style.display = "block";
-          cardEl._imageEmpty.style.display = "none";
-          cardEl._caption.textContent = data.prompt
+      async function loadLatestImageForQuiz(quizId, card) {
+        try {
+          const data = await apiFetch(`/quiz/${quizId}/images/latest`);
+          const url = resolveImageUrl(data);
+          if (!url) {
+            card._image.style.display = "none";
+            card._imageEmpty.style.display = "block";
+            card._caption.textContent = "";
+            return;
+          }
+          card._image.src = url;
+          card._image.style.display = "block";
+          card._imageEmpty.style.display = "none";
+          card._caption.textContent = data.prompt
             ? `生成に使用したプロンプト: ${data.prompt}`
             : "";
-        } else {
-          cardEl._image.style.display = "none";
-          cardEl._imageEmpty.style.display = "block";
-          cardEl._caption.textContent = "";
+        } catch (e) {
+          // 404 は「まだ画像なし」と扱う
+          card._image.style.display = "none";
+          card._imageEmpty.style.display = "block";
+          card._caption.textContent = "";
         }
-      } catch (err) {
-        // 404 のときはまだ画像なし
-        cardEl._image.style.display = "none";
-        cardEl._imageEmpty.style.display = "block";
-        cardEl._caption.textContent = "";
       }
-    }
 
-    function buildDefaultPrompt(quiz) {
-      // 実験用のシンプルなデフォルト
-      return `A simple, clean illustration that helps remember the word "${quiz.question}" whose answer is "${quiz.answer}". Do NOT show any text in the image.`;
-    }
+      function buildDefaultPrompt(quiz) {
+        const q = quiz.question || "";
+        const a = quiz.answer || "";
+        return (
+          `A simple, clean illustration that helps remember the word "${q}"` +
+          (a ? ` (answer: "${a}")` : "") +
+          `. No text, one main object, plain background.`
+        );
+      }
 
-    async function openPromptAndGenerate(quizId) {
-      const card = [...quizListEl.children].find(
-        (c) => Number(c.dataset.id) === Number(quizId)
-      );
-      if (!card) return;
-      const quiz = currentQuizList.find((q) => Number(q.id) === Number(quizId));
-      const promptExtra = card._promptArea.value.trim();
+      async function openPromptAndGenerate(quiz, card) {
+        const extra = (card._promptArea.value || "").trim();
+        const prompt = extra || buildDefaultPrompt(quiz);
 
-      const prompt =
-        promptExtra || (quiz ? buildDefaultPrompt(quiz) : "memory friendly illustration");
+        card._caption.textContent = "画像生成リクエスト送信中…";
+        card._imageEmpty.style.display = "block";
+        card._imageEmpty.textContent = "画像生成中…";
 
-      card._caption.textContent = "画像生成中...";
-      card._imageEmpty.style.display = "block";
-      card._imageEmpty.textContent = "画像生成中...";
+        try {
+          await apiFetch("/quiz/image/generate", {
+            method: "POST",
+            body: JSON.stringify({ quiz_id: quiz.id, prompt }),
+          });
+          card._caption.textContent =
+            "画像生成をリクエストしました。数秒後に再読み込みします…";
+          setTimeout(() => loadLatestImageForQuiz(quiz.id, card), 4000);
+        } catch (e) {
+          console.error(e);
+          card._caption.textContent = "画像生成に失敗しました。";
+          card._imageEmpty.textContent = "画像の URL を取得できませんでした。";
+        }
+      }
 
-      try {
-        await apiFetch("/quiz/image/generate", {
-          method: "POST",
-          body: JSON.stringify({ quiz_id: quizId, prompt })
+      // ====== フラッシュカード ======
+      const flashContainer = document.getElementById("flash-container");
+      const flashSortEl = document.getElementById("flash-sort-key");
+      document
+        .getElementById("reload-flash")
+        .addEventListener("click", () => loadFlashcards());
+      flashSortEl.addEventListener("change", () => renderFlashcards());
+
+      let flashList = [];
+      let flashIndex = 0;
+      let flashShowAnswer = false;
+
+      async function loadFlashcards() {
+        flashContainer.innerHTML = "読み込み中…";
+        try {
+          const params = new URLSearchParams({
+            status: "all",
+            order: "created_desc",
+            offset: "0",
+            limit: "200",
+          });
+          const data = await apiFetch(`/quiz/list?${params.toString()}`);
+          const meta = loadQuizMeta();
+          flashList = (data || []).map((q) => ({
+            ...q,
+            category: (meta[q.id] && meta[q.id].category) || "未分類",
+            subject: (meta[q.id] && meta[q.id].subject) || "未設定",
+          }));
+          renderFlashcards();
+        } catch (e) {
+          console.error(e);
+          flashContainer.innerHTML =
+            "<p class='muted'>フラッシュカードの読み込みに失敗しました。</p>";
+        }
+      }
+
+      function renderFlashcards() {
+        if (!flashList.length) {
+          flashContainer.innerHTML =
+            "<p class='muted'>クイズがまだありません。</p>";
+          return;
+        }
+
+        const sortKey = flashSortEl.value || "created_desc";
+        flashList = sortQuizzes(flashList, sortKey);
+        if (flashIndex >= flashList.length) flashIndex = 0;
+
+        const quiz = flashList[flashIndex];
+
+        flashContainer.innerHTML = "";
+        const card = document.createElement("div");
+        card.className = "flash-card";
+
+        const meta = document.createElement("div");
+        meta.className = "muted";
+        meta.textContent = `#${quiz.id}  分類: ${quiz.category} / 科目: ${quiz.subject}`;
+        card.appendChild(meta);
+
+        const wordEl = document.createElement("div");
+        wordEl.className = "flash-word";
+        wordEl.textContent = quiz.question;
+        card.appendChild(wordEl);
+
+        const ansEl = document.createElement("div");
+        ansEl.className = "flash-answer";
+        if (flashShowAnswer) {
+          ansEl.textContent = quiz.answer;
+        } else {
+          ansEl.textContent = "タップ / クリックで答えを表示";
+          ansEl.classList.add("muted");
+        }
+        card.appendChild(ansEl);
+
+        const controls = document.createElement("div");
+        controls.className = "flash-controls";
+
+        const prevBtn = document.createElement("button");
+        prevBtn.className = "btn btn-outline btn-sm";
+        prevBtn.textContent = "前へ";
+
+        const toggleBtn = document.createElement("button");
+        toggleBtn.className = "btn btn-primary btn-sm";
+        toggleBtn.textContent = flashShowAnswer ? "答えを隠す" : "答えを表示";
+
+        const nextBtn = document.createElement("button");
+        nextBtn.className = "btn btn-outline btn-sm";
+        nextBtn.textContent = "次へ";
+
+        controls.appendChild(prevBtn);
+        controls.appendChild(toggleBtn);
+        controls.appendChild(nextBtn);
+        card.appendChild(controls);
+
+        const hint = document.createElement("div");
+        hint.className = "muted";
+        hint.style.marginTop = "8px";
+        hint.textContent =
+          "※ ここでは自己採点のみ（サーバーには判定リクエストを送りません）。";
+        card.appendChild(hint);
+
+        flashContainer.appendChild(card);
+
+        // イベント
+        ansEl.addEventListener("click", () => {
+          flashShowAnswer = !flashShowAnswer;
+          renderFlashcards();
         });
-        card._caption.textContent = "画像の生成リクエストを送信しました。";
-        loadLatestImageForQuiz(quizId, card);
-      } catch (err) {
-        console.error(err);
-        card._caption.textContent = "画像生成に失敗しました。";
-        card._imageEmpty.textContent = "画像の URL を取得できませんでした。";
-      }
-    }
-
-    // ====== フラッシュカード ======
-    const flashContainer = document.getElementById("flash-container");
-    const flashSortEl = document.getElementById("flash-sort-key");
-    document.getElementById("reload-flash").addEventListener("click", () => loadFlashcards());
-    flashSortEl.addEventListener("change", () => renderFlashcards());
-
-    let flashList = [];
-    let flashIndex = 0;
-    let showAnswer = false;
-
-    async function loadFlashcards() {
-      flashContainer.innerHTML = "読み込み中...";
-
-      try {
-        const params = new URLSearchParams({
-          status: "all",
-          order: "created_desc",
-          offset: "0",
-          limit: "200"
+        toggleBtn.addEventListener("click", () => {
+          flashShowAnswer = !flashShowAnswer;
+          renderFlashcards();
         });
-        const data = await apiFetch(`/quiz/list?${params.toString()}`);
-        const meta = loadQuizMeta();
-        flashList = (data || []).map((q) => ({
-          ...q,
-          category: (meta[q.id] && meta[q.id].category) || "未分類",
-          subject: (meta[q.id] && meta[q.id].subject) || "未設定"
-        }));
-        renderFlashcards();
-      } catch (err) {
-        console.error(err);
-        flashContainer.innerHTML = "<p>フラッシュカードの読み込みに失敗しました。</p>";
-      }
-    }
-
-    function renderFlashcards() {
-      if (!flashList.length) {
-        flashContainer.innerHTML = "<p class='muted'>クイズがまだありません。</p>";
-        return;
-      }
-      const sortKey = flashSortEl.value || "created_desc";
-      const sorted = sortQuizzes(flashList, sortKey);
-
-      // インデックスは維持したままソート結果に合わせて clamp
-      flashList = sorted;
-      if (flashIndex >= flashList.length) flashIndex = 0;
-
-      const quiz = flashList[flashIndex];
-      flashContainer.innerHTML = "";
-
-      const card = document.createElement("div");
-      card.className = "flash-card";
-
-      const meta = document.createElement("div");
-      meta.className = "muted";
-      meta.textContent = `#${quiz.id}  分類: ${quiz.category} / 科目: ${quiz.subject}`;
-      card.appendChild(meta);
-
-      const wordEl = document.createElement("div");
-      wordEl.className = "flash-word";
-      wordEl.textContent = quiz.question;
-      card.appendChild(wordEl);
-
-      if (showAnswer) {
-        const ans = document.createElement("div");
-        ans.className = "flash-answer";
-        ans.textContent = quiz.answer;
-        card.appendChild(ans);
-      } else {
-        const placeholder = document.createElement("div");
-        placeholder.className = "flash-answer muted";
-        placeholder.textContent = "タップ / クリックで答えを表示";
-        card.appendChild(placeholder);
+        prevBtn.addEventListener("click", () => {
+          flashIndex =
+            (flashIndex - 1 + flashList.length) % flashList.length;
+          flashShowAnswer = false;
+          renderFlashcards();
+        });
+        nextBtn.addEventListener("click", () => {
+          flashIndex = (flashIndex + 1) % flashList.length;
+          flashShowAnswer = false;
+          renderFlashcards();
+        });
       }
 
-      const controls = document.createElement("div");
-      controls.className = "flash-controls";
-
-      const toggleBtn = document.createElement("button");
-      toggleBtn.type = "button";
-      toggleBtn.className = "btn btn-primary btn-sm";
-      toggleBtn.textContent = showAnswer ? "答えを隠す" : "答えを表示";
-      toggleBtn.addEventListener("click", () => {
-        showAnswer = !showAnswer;
-        renderFlashcards();
-      });
-
-      const prevBtn = document.createElement("button");
-      prevBtn.type = "button";
-      prevBtn.className = "btn btn-outline btn-sm";
-      prevBtn.textContent = "前へ";
-      prevBtn.addEventListener("click", () => {
-        flashIndex = (flashIndex - 1 + flashList.length) % flashList.length;
-        showAnswer = false;
-        renderFlashcards();
-      });
-
-      const nextBtn = document.createElement("button");
-      nextBtn.type = "button";
-      nextBtn.className = "btn btn-outline btn-sm";
-      nextBtn.textContent = "次へ";
-      nextBtn.addEventListener("click", () => {
-        flashIndex = (flashIndex + 1) % flashList.length;
-        showAnswer = false;
-        renderFlashcards();
-      });
-
-      controls.appendChild(prevBtn);
-      controls.appendChild(toggleBtn);
-      controls.appendChild(nextBtn);
-      card.appendChild(controls);
-
-      const hint = document.createElement("div");
-      hint.className = "muted";
-      hint.style.marginTop = "10px";
-      hint.textContent = "※ ここでは自己採点のみ（バックエンドへの判定リクエストは送っていません）。";
-      card.appendChild(hint);
-
-      flashContainer.appendChild(card);
-    }
-
-    // 初期ロード
-    loadQuizList();
-  </script>
-</body>
+      // ====== 初期ロード ======
+      // 一覧は最初からロードしておく
+      loadQuizList();
+    </script>
+  </body>
 </html>
